@@ -4,10 +4,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3001:3001"
+      - "3010:3010"
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - PORT=3001
+      - PORT=3010
     volumes:
       - kairos_data:/app/data
     restart: always
@@ -19,7 +19,7 @@ services:
     ports:
       - "3008:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:3001/api
+      - NEXT_PUBLIC_API_URL=http://backend:3010/api
     depends_on:
       - backend
     restart: always
