@@ -1,7 +1,20 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
+function getApiUrl(): string {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:3001/api";
+    }
+    return "http://187.77.229.227:3010/api";
+  }
+  return "http://backend:3010/api";
+}
+
+function getUrl(path: string): string {
+  return `${getApiUrl()}${path}`;
+}
 
 async function fetchApi(path: string, options?: RequestInit) {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetch(getUrl(path), {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
