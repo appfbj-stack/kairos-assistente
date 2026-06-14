@@ -1,7 +1,7 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY package.json .
+COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 EXPOSE 3001
-CMD ["npx", "tsx", "src/main.ts"]
+CMD ["./node_modules/.bin/tsx", "src/main.ts"]

@@ -16,11 +16,15 @@ app.use("/api/agenda", agendaRouter);
 app.use("/api/memory", memoryRouter);
 app.use("/api/settings", settingsRouter);
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", (_req: any, res: any) => {
   res.json({ status: "ok", version: "1.0.0", name: "Kairos Core" });
 });
 
-app.use((_req, res) => {
+app.get("/api", (_req: any, res: any) => {
+  res.json({ status: "ok", name: "Kairos Core API" });
+});
+
+app.use((_req: any, res: any) => {
   res.status(404).json({ error: "Rota não encontrada" });
 });
 
