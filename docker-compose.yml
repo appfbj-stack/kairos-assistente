@@ -19,7 +19,7 @@ services:
     ports:
       - "3008:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:3010/api
+      - NEXT_PUBLIC_API_URL=http://187.77.229.227:3010/api
     depends_on:
       - backend
     restart: always
