@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --kairos-primary: #4c6ef5;
+  --kairos-primary-light: #dbe4ff;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f8f9fa;
+}
+
+@layer components {
+  .btn-icon {
+    @apply flex items-center justify-center w-12 h-12 rounded-full transition-colors duration-200;
+  }
+
+  .btn-icon:active {
+    @apply scale-95;
+  }
+
+  .message-bubble {
+    @apply px-4 py-3 rounded-2xl max-w-[85%] leading-relaxed;
+  }
+
+  .message-user {
+    @apply message-bubble bg-kairos-500 text-white ml-auto rounded-br-md;
+  }
+
+  .message-assistant {
+    @apply message-bubble bg-white border border-gray-100 shadow-sm mr-auto rounded-bl-md;
+  }
+}
+
+input, textarea, button {
+  font-size: 16px !important;
+}

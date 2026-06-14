@@ -1,0 +1,24 @@
+{
+  "name": "Kairos",
+  "short_name": "Kairos",
+  "description": "Assistente pessoal inteligente com memória, agenda e conversação por voz.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4c6ef5",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "scope": "/",
+  "lang": "pt-BR"
+}
