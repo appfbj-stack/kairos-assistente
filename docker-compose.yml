@@ -34,6 +34,9 @@ services:
       - KAIROS_CLIENT_ID=
       - ADMIN_EMAIL=admin@fotoagenda.com
       - ADMIN_PASSWORD=admin123
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
     volumes:
       - fotoagenda_data:/app/data
     restart: always
