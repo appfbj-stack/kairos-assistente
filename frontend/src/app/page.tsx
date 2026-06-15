@@ -124,6 +124,11 @@ export default function Home() {
     loadAdmin();
   }
 
+  async function updateLicenseStatus(id: string, status: string) {
+    await adminApi().post(`/admin/licenses/${id}/status`, { status });
+    loadAdmin();
+  }
+
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -493,6 +498,26 @@ export default function Home() {
                     <div className="flex-1 min-w-0"><p className="font-medium">{c.name}</p><p className="text-xs text-gray-400">{c.company} · {c.category}</p></div>
                     <span className={`text-xs px-1.5 py-0.5 rounded ${c.status === "active" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>{c.status}</span>
                     <button onClick={() => deleteAdminClient(c.id)} className="text-red-300"><Trash2 size={14} /></button>
+                  </div>
+                ))}
+              </div>
+
+              <h3 className="text-sm font-semibold pt-2">Licenças</h3>
+              <div className="space-y-2">
+                {adminLicenses.map((l: any) => (
+                  <div key={l.id} className="bg-white p-3 rounded-xl shadow-sm border">
+                    <div className="flex items-center justify-between mb-2">
+                      <div><p className="text-sm font-medium">{l.client_name}</p><p className="text-xs text-gray-400">{l.app_name}</p></div>
+                      <div className="flex gap-1">
+                        {["trial","active","blocked"].map((s) => (
+                          <button key={s} onClick={() => updateLicenseStatus(l.id, s)}
+                            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${l.status === s ? (s === "active" ? "bg-green-500 text-white" : s === "trial" ? "bg-yellow-500 text-white" : "bg-red-400 text-white") : "bg-gray-100 text-gray-500"}`}>
+                            {s === "trial" ? "Teste" : s === "active" ? "Ativo" : "Bloq"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400">{l.type} · {l.start_date?.slice(0,10)} até {l.end_date?.slice(0,10)}</p>
                   </div>
                 ))}
               </div>

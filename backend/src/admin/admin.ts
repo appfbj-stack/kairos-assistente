@@ -94,4 +94,18 @@ router.get("/stats", async (_req: Request, res: Response) => {
   });
 });
 
+// Update license status (active/blocked/trial)
+router.post("/licenses/:id/status", async (req: Request, res: Response) => {
+  await getDb();
+  const { status } = req.body;
+  if (!["active", "blocked", "trial", "expired"].includes(status)) {
+    return res.status(400).json({ error: "Status inválido" });
+  }
+  const license = queryOne("SELECT * FROM licenses WHERE id = ?", [req.params.id]);
+  if (!license) return res.status(404).json({ error: "Licença não encontrada" });
+  runSql("UPDATE licenses SET status = ?, updated_at = datetime('now') WHERE id = ?", [status, req.params.id]);
+  addLog((license as any).client_id, (license as any).app_id, "status_changed", `Status alterado para: ${status}`);
+  res.json({ ok: true, status });
+});
+
 export default router;
