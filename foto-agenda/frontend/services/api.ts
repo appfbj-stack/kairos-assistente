@@ -6,7 +6,7 @@ function resolveBaseUrl() {
   const configured = import.meta.env.VITE_API_URL?.trim();
   if (configured) return normalizeBase(configured);
   if (import.meta.env.DEV) return "http://localhost:8000";
-  return "https://api.fotografia.fbautomacao.space";
+  return "https://fotoagenda.fbautomacao.space";
 }
 
 const BASE = resolveBaseUrl();
