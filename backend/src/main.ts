@@ -7,6 +7,7 @@ import agendaRouter from "./agenda/agenda.js";
 import memoryRouter from "./memory/memory.js";
 import settingsRouter from "./settings/settings.js";
 import { createBackup } from "./database/backup.js";
+import { startBot } from "./telegram/bot.js";
 import adminRouter from "./admin/admin.js";
 import licenseRouter from "./admin/license.js";
 import backupRouter from "./admin/backup.js";
@@ -46,6 +47,8 @@ async function start() {
   const backupInterval = 6 * 60 * 60 * 1000;
   createBackup().catch(() => {});
   setInterval(() => createBackup().catch(() => {}), backupInterval);
+
+  startBot();
 
   app.listen(PORT, () => {
     console.log(`Kairos Core API rodando em http://localhost:${PORT}`);
