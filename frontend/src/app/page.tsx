@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/services/api";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
-import { Mic, MicOff, Send, Calendar, Settings, Trash2, MessageSquare, Volume2, VolumeX, Plus, X, Check, Clock } from "lucide-react";
+import Link from "next/link";
+import { Mic, MicOff, Send, Calendar, Settings, Trash2, MessageSquare, Volume2, VolumeX, Plus, X, Check, Clock, Shield } from "lucide-react";
 
 type Message = {
   id: string;
@@ -248,6 +249,7 @@ export default function Home() {
           <h1 className="text-lg font-semibold">Kairos</h1>
         </div>
         <div className="flex items-center gap-1">
+          <Link href="/admin" className="btn-icon !w-10 !h-10 text-white/80 hover:text-white"><Shield size={18} /></Link>
           <button onClick={() => setTab("agenda")} className={`btn-icon !w-10 !h-10 ${tab === "agenda" ? "bg-white/20" : ""}`}>
             <Calendar size={20} />
           </button>
