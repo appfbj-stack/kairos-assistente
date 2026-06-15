@@ -43,11 +43,11 @@ async def lifespan(app: FastAPI):
     check_license()
     yield
 
-from app.routes import auth, admin, shoots, hermes, panel, google_auth
+from app.routes import auth, admin, shoots, hermes, panel
 
 app = FastAPI(title="FotoAgenda API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-app.include_router(auth.router); app.include_router(admin.router); app.include_router(shoots.router); app.include_router(hermes.router); app.include_router(panel.router); app.include_router(google_auth.router)
+app.include_router(auth.router); app.include_router(admin.router); app.include_router(shoots.router); app.include_router(hermes.router); app.include_router(panel.router)
 
 @app.get("/health")
 def health(): return {"status": "ok", "app": "FotoAgenda API"}

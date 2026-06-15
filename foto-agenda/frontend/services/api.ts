@@ -72,9 +72,3 @@ export const adminSetHermesPlan = (tenantId: number, plan: string) =>
   req<any>(`/admin/tenants/${tenantId}/hermes-plan`, { method: "PATCH", body: JSON.stringify({ plan }) });
 export const adminResetHermesUsage = (tenantId: number) =>
   req<any>(`/admin/tenants/${tenantId}/hermes-reset`, { method: "POST" });
-
-export const apiGoogleAuthUrl = () => req<{ url: string }>("/google/auth-url");
-export const apiGoogleCallback = (code: string) =>
-  req<{ user: any; access_token: string; refresh_token: string }>("/google/callback", {
-    method: "POST", body: JSON.stringify({ code }),
-  });
