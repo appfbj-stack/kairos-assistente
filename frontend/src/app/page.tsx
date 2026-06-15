@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "@/services/api";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { useTextToSpeech } from "@/hooks/use-text-to-speech";
-import Link from "next/link";
 import { Mic, MicOff, Send, Calendar, Settings, Trash2, MessageSquare, Volume2, VolumeX, Plus, X, Check, Clock, Shield } from "lucide-react";
 
 type Message = {
@@ -34,7 +33,7 @@ type MemoryItem = {
   category: string;
 };
 
-type PageTab = "chat" | "agenda" | "settings";
+type PageTab = "chat" | "agenda" | "settings" | "admin";
 
 export default function Home() {
   const [tab, setTab] = useState<PageTab>("chat");
@@ -61,6 +60,69 @@ export default function Home() {
   const [newMemoryValue, setNewMemoryValue] = useState("");
 
   const [llmKey, setLlmKey] = useState("");
+
+  // Admin state
+  const [adminStats, setAdminStats] = useState<any>(null);
+  const [adminClients, setAdminClients] = useState<any[]>([]);
+  const [adminApps, setAdminApps] = useState<any[]>([]);
+  const [adminLicenses, setAdminLicenses] = useState<any[]>([]);
+  const [adminLogs, setAdminLogs] = useState<any[]>([]);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientCategory, setNewClientCategory] = useState("Outros");
+  const [newClientCompany, setNewClientCompany] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+
+  function adminApi() {
+    const host = typeof window !== "undefined" ? window.location.hostname : "backend";
+    const base = `http://${host}:3010/api`;
+    return {
+      get: (p: string) => fetch(`${base}${p}`).then((r) => r.json()),
+      post: (p: string, d: any) => fetch(`${base}${p}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) }).then((r) => r.json()),
+      del: (p: string) => fetch(`${base}${p}`, { method: "DELETE" }).then((r) => r.json()),
+    };
+  }
+
+  async function loadAdmin() {
+    const a = adminApi();
+    try { setAdminStats(await a.get("/admin/stats")); } catch {}
+    try { setAdminClients(await a.get("/admin/clients")); } catch {}
+    try { setAdminApps(await a.get("/admin/apps")); } catch {}
+    try { setAdminLicenses(await a.get("/license/list")); } catch {}
+    try { setAdminLogs(await a.get("/admin/logs")); } catch {}
+  }
+
+  async function createAdminClient() {
+    if (!newClientName) return;
+    await adminApi().post("/admin/clients", { name: newClientName, company: newClientCompany, phone: newClientPhone, email: newClientEmail, category: newClientCategory });
+    setNewClientName(""); setNewClientCompany(""); setNewClientPhone(""); setNewClientEmail("");
+    loadAdmin();
+  }
+
+  async function deleteAdminClient(id: string) {
+    await adminApi().del(`/admin/clients/${id}`);
+    loadAdmin();
+  }
+
+  async function createAdminApp() {
+    const name = window.prompt("Nome do app:"); if (!name) return;
+    const slug = window.prompt("Slug (ex: oficina):"); if (!slug) return;
+    await adminApi().post("/admin/apps", { name, slug });
+    loadAdmin();
+  }
+
+  async function createAdminTrial() {
+    const client_name = window.prompt("Nome do cliente:"); if (!client_name) return;
+    const app_slug = window.prompt("Slug do app:"); if (!app_slug) return;
+    await adminApi().post("/license/create-trial", { client_name, app_slug, company: "", email: "", phone: "" });
+    loadAdmin();
+  }
+
+  async function activateAdminLicense() {
+    const id = window.prompt("ID da licença:"); if (!id) return;
+    await adminApi().post("/license/activate", { license_id: id, amount: 0 });
+    loadAdmin();
+  }
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -249,7 +311,7 @@ export default function Home() {
           <h1 className="text-lg font-semibold">Kairos</h1>
         </div>
         <div className="flex items-center gap-1">
-          <Link href="/admin" className="btn-icon !w-10 !h-10 text-white/80 hover:text-white"><Shield size={18} /></Link>
+          <button onClick={() => { setTab("admin"); loadAdmin(); }} className={`btn-icon !w-10 !h-10 ${tab === "admin" ? "bg-white/20" : ""}`}><Shield size={18} /></button>
           <button onClick={() => setTab("agenda")} className={`btn-icon !w-10 !h-10 ${tab === "agenda" ? "bg-white/20" : ""}`}>
             <Calendar size={20} />
           </button>
@@ -392,6 +454,53 @@ export default function Home() {
           </div>
         )}
 
+        {tab === "admin" && (
+          <div className="h-full flex flex-col">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              {adminStats && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white p-3 rounded-xl shadow-sm border"><p className="text-xl font-bold text-kairos-500">{adminStats.total_clients}</p><p className="text-xs text-gray-500">Clientes</p></div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border"><p className="text-xl font-bold text-kairos-500">{adminStats.total_licenses}</p><p className="text-xs text-gray-500">Licenças</p></div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border"><p className="text-xl font-bold text-green-500">{adminStats.active_licenses}</p><p className="text-xs text-gray-500">Ativas</p></div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border"><p className="text-xl font-bold text-yellow-500">{adminStats.trial_licenses}</p><p className="text-xs text-gray-500">Trial</p></div>
+                  <div className="bg-white p-3 rounded-xl shadow-sm border col-span-2"><p className="text-xl font-bold text-red-400">{adminStats.expired_licenses}</p><p className="text-xs text-gray-500">Expiradas</p></div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button onClick={createAdminClient} className="flex-1 py-2 bg-kairos-500 text-white rounded-lg text-sm">+ Cliente</button>
+                <button onClick={createAdminApp} className="flex-1 py-2 bg-kairos-500 text-white rounded-lg text-sm">+ App</button>
+                <button onClick={createAdminTrial} className="flex-1 py-2 bg-yellow-500 text-white rounded-lg text-sm">Trial</button>
+              </div>
+
+              <div className="bg-white p-3 rounded-xl shadow-sm border">
+                <h3 className="text-sm font-semibold mb-2">Novo Cliente</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={newClientName} onChange={(e) => setNewClientName(e.target.value)} placeholder="Nome*" className="col-span-2 px-3 py-2 rounded-lg border text-sm" />
+                  <input value={newClientCompany} onChange={(e) => setNewClientCompany(e.target.value)} placeholder="Empresa" className="px-3 py-2 rounded-lg border text-sm" />
+                  <input value={newClientPhone} onChange={(e) => setNewClientPhone(e.target.value)} placeholder="Telefone" className="px-3 py-2 rounded-lg border text-sm" />
+                  <input value={newClientEmail} onChange={(e) => setNewClientEmail(e.target.value)} placeholder="Email" className="col-span-2 px-3 py-2 rounded-lg border text-sm" />
+                  <select value={newClientCategory} onChange={(e) => setNewClientCategory(e.target.value)} className="col-span-2 px-3 py-2 rounded-lg border text-sm">
+                    {["Oficina","Imobiliária","Vidraçaria","Igreja","Kairos Assistente","Clínica","Outros"].map((c) => <option key={c}>{c}</option>)}
+                  </select>
+                  <button onClick={createAdminClient} className="col-span-2 py-2 bg-kairos-500 text-white rounded-lg text-sm">Cadastrar</button>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                {adminClients.map((c: any) => (
+                  <div key={c.id} className="flex items-center gap-2 bg-white p-2 rounded-lg border text-sm">
+                    <div className="flex-1 min-w-0"><p className="font-medium">{c.name}</p><p className="text-xs text-gray-400">{c.company} · {c.category}</p></div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${c.status === "active" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>{c.status}</span>
+                    <button onClick={() => deleteAdminClient(c.id)} className="text-red-300"><Trash2 size={14} /></button>
+                  </div>
+                ))}
+              </div>
+
+              <button onClick={loadAdmin} className="w-full py-2 bg-gray-100 rounded-lg text-sm text-gray-500">Atualizar</button>
+            </div>
+          </div>
+        )}
         {tab === "settings" && (
           <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
