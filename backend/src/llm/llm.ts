@@ -19,7 +19,7 @@ function getClient(): OpenAI {
 
 export async function chatCompletion(
   messages: { role: string; content: string }[],
-  model = "microsoft/phi-3-mini-128k-instruct:free"
+  model = "mistralai/mistral-7b-instruct:free"
 ): Promise<string> {
   try {
     const completion = await getClient().chat.completions.create({
