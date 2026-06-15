@@ -78,7 +78,7 @@ export default function Home() {
   useEffect(() => {
     if (transcript) {
       setInput(transcript);
-      setTimeout(() => sendMessage(), 100);
+      sendMessage(transcript);
     }
   }, [transcript]);
 
@@ -117,8 +117,8 @@ export default function Home() {
     } catch {}
   }
 
-  async function sendMessage() {
-    const text = input.trim();
+  async function sendMessage(msg?: string) {
+    const text = msg || input.trim();
     if (!text || loading) return;
 
     setInput("");
