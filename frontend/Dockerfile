@@ -3,6 +3,7 @@ WORKDIR /app
 COPY package.json .
 RUN npm install
 COPY . .
+RUN ls -la /app/src/app/ && echo "FILES OK"
 RUN npx next build
 
 FROM node:20-alpine AS runner
