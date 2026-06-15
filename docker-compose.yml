@@ -18,9 +18,38 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3008:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:3010/api
     depends_on:
       - backend
     restart: always
 
+  fotoagenda-backend:
+    build:
+      context: ./foto-agenda/backend
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    environment:
+      - KAIROS_CLIENT_ID=
+      - ADMIN_EMAIL=admin@fotoagenda.com
+      - ADMIN_PASSWORD=admin123
+    volumes:
+      - fotoagenda_data:/app/data
+    restart: always
+
+  fotoagenda-frontend:
+    build:
+      context: ./foto-agenda/frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://fotoagenda-backend:8000
+    ports:
+      - "3015:80"
+    depends_on:
+      - fotoagenda-backend
+    restart: always
+
 volumes:
   kairos_data:
+  fotoagenda_data:
