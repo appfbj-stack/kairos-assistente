@@ -8,7 +8,7 @@ const DB_PATH = path.join(__dirname, "..", "..", "data", "kairos.db");
 
 let db: SqlJsDatabase | null = null;
 
-function saveDb() {
+export function saveDb() {
   if (!db) return;
   const data = db.export();
   const buffer = Buffer.from(data);
