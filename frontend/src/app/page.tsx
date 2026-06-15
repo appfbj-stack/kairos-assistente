@@ -492,12 +492,15 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {adminClients.map((c: any) => (
-                  <div key={c.id} className="flex items-center gap-2 bg-white p-2 rounded-lg border text-sm">
-                    <div className="flex-1 min-w-0"><p className="font-medium">{c.name}</p><p className="text-xs text-gray-400">{c.company} · {c.category}</p></div>
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${c.status === "active" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>{c.status}</span>
-                    <button onClick={() => deleteAdminClient(c.id)} className="text-red-300"><Trash2 size={14} /></button>
+                  <div key={c.id} className="flex items-center gap-2 bg-white p-2.5 rounded-lg border text-sm hover:shadow-sm transition-shadow">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 truncate">{c.name}</p>
+                      <p className="text-[11px] text-gray-400 truncate">{c.company} · {c.category}</p>
+                    </div>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${c.status === "active" ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}>{c.status}</span>
+                    <button onClick={() => deleteAdminClient(c.id)} className="text-red-300 hover:text-red-500 p-1"><Trash2 size={13} /></button>
                   </div>
                 ))}
               </div>
@@ -505,19 +508,33 @@ export default function Home() {
               <h3 className="text-sm font-semibold pt-2">Licenças</h3>
               <div className="space-y-2">
                 {adminLicenses.map((l: any) => (
-                  <div key={l.id} className="bg-white p-3 rounded-xl shadow-sm border">
-                    <div className="flex items-center justify-between mb-2">
-                      <div><p className="text-sm font-medium">{l.client_name}</p><p className="text-xs text-gray-400">{l.app_name}</p></div>
-                      <div className="flex gap-1">
-                        {["trial","active","blocked"].map((s) => (
-                          <button key={s} onClick={() => updateLicenseStatus(l.id, s)}
-                            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${l.status === s ? (s === "active" ? "bg-green-500 text-white" : s === "trial" ? "bg-yellow-500 text-white" : "bg-red-400 text-white") : "bg-gray-100 text-gray-500"}`}>
-                            {s === "trial" ? "Teste" : s === "active" ? "Ativo" : "Bloq"}
+                  <div key={l.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                    <div className="p-3 border-b border-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{l.client_name}</p>
+                          <p className="text-xs text-gray-400">{l.app_name}</p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ml-2 ${l.status === "active" ? "bg-green-100 text-green-700" : l.status === "trial" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>{l.status}</span>
+                      </div>
+                    </div>
+                    <div className="px-3 py-2 bg-gray-50/50">
+                      <div className="flex items-center justify-center gap-1">
+                        {[
+                          { value: "trial", label: "🧪 Teste", color: "bg-yellow-400" },
+                          { value: "active", label: "✅ Ativo", color: "bg-green-500" },
+                          { value: "blocked", label: "🚫 Bloqueado", color: "bg-red-400" },
+                        ].map((opt) => (
+                          <button key={opt.value} onClick={() => updateLicenseStatus(l.id, opt.value)}
+                            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-95 ${l.status === opt.value ? `${opt.color} text-white shadow-sm` : "bg-white text-gray-400 border border-gray-200 hover:border-gray-300"}`}>
+                            {l.status === opt.value ? "●" : "○"} {opt.label}
                           </button>
                         ))}
                       </div>
+                      <p className="text-[10px] text-gray-400 text-center mt-1.5">
+                        {l.type} · {l.start_date?.slice(0,10)} até {l.end_date?.slice(0,10)}
+                      </p>
                     </div>
-                    <p className="text-xs text-gray-400">{l.type} · {l.start_date?.slice(0,10)} até {l.end_date?.slice(0,10)}</p>
                   </div>
                 ))}
               </div>
