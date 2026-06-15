@@ -73,8 +73,12 @@ export const adminSetHermesPlan = (tenantId: number, plan: string) =>
 export const adminResetHermesUsage = (tenantId: number) =>
   req<any>(`/admin/tenants/${tenantId}/hermes-reset`, { method: "POST" });
 
-export const apiGoogleAuthUrl = () => req<{ url: string }>("/google/auth-url");
+// Google OAuth - use same-origin (nginx proxy)
+const SAME_ORIGIN = "";
+export const apiGoogleAuthUrl = () =>
+  fetch(`${SAME_ORIGIN}/google/auth-url`).then((r) => r.json());
 export const apiGoogleCallback = (code: string) =>
-  req<{ user: any; access_token: string; refresh_token: string }>("/google/callback", {
-    method: "POST", body: JSON.stringify({ code }),
-  });
+  fetch(`${SAME_ORIGIN}/google/callback`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  }).then((r) => r.json());

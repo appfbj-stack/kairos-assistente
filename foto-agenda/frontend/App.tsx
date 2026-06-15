@@ -5,8 +5,9 @@ import {
   apiLogin, apiRegister, apiMe, apiModules, apiGetClients, apiSaveClient, apiDeleteClient,
   apiGetShoots, apiSaveShoot, apiDeleteShoot, apiHermesChat,
   adminListTenants, adminUpdateTenant, adminToggleModule,
-  adminGetHermesUsage, adminSetHermesPlan, adminResetHermesUsage,
-  setToken, clearToken, isLoggedIn,
+   adminGetHermesUsage, adminSetHermesPlan, adminResetHermesUsage,
+   apiGoogleAuthUrl,
+   setToken, clearToken, isLoggedIn,
 } from './services/api';
 import { Client, Shoot, ViewState, ShootStatus, PaymentStatus } from './types';
 import { BottomNav } from './components/BottomNav';
@@ -107,10 +108,14 @@ function App() {
         const code = params.get("code");
         if (code) {
           try {
-            const { default: api } = await import('./services/api');
-            const res = await api.apiGoogleCallback(code);
-            if (res.access_token) {
-              api.setToken(res.access_token);
+            const res = await fetch("/google/callback", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code }),
+            });
+            const data = await res.json();
+            if (data.access_token) {
+              const { setToken: saveToken } = await import('./services/api');
+              saveToken(data.access_token);
               window.history.replaceState({}, "", window.location.pathname);
             }
           } catch(e) { console.error("Google login error:", e); }
