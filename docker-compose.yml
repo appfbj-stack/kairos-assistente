@@ -29,7 +29,7 @@ services:
       context: ./foto-agenda/backend
       dockerfile: Dockerfile
     ports:
-      - "8002:8000"
+      - "8005:8000"
     environment:
       - KAIROS_CLIENT_ID=
       - ADMIN_EMAIL=admin@fotoagenda.com
