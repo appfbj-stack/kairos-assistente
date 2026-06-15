@@ -76,7 +76,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (transcript) setInput(transcript);
+    if (transcript) {
+      setInput(transcript);
+      setTimeout(() => sendMessage(), 100);
+    }
   }, [transcript]);
 
   async function loadConversations() {
@@ -129,6 +132,7 @@ export default function Home() {
       setConvId(data.conversation_id);
       const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: data.message };
       setMessages((prev) => [...prev, aiMsg]);
+      speak(data.message);
       loadConversations();
     } catch (err: any) {
       const errMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: `Erro: ${err.message}` };
