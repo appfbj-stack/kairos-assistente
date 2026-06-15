@@ -1,123 +1,113 @@
 # Projeto: Kairos Core 1.0
 
 ## Status
-**Sessão**: 15/06/2026 — **Kairos Admin Arquitetura**
-**Stack**: Next.js 15 (PWA) + Express + SQLite (sql.js) + OpenRouter LLM
+**Sessão**: 15/06/2026 — **Arquitetura completa com FotoAgenda**
+**Stack**: Next.js 15 (PWA) + Express + SQLite + OpenRouter + FastAPI + React + Vite + Nginx
 
-## Arquitetura
+## Arquitetura do Ecossistema Kairos
+
 ```
-kairos-core/                # Backend central (Kairos Admin)
-├── backend/
+kairos-core/                    # Projeto central
+├── backend/                    # API principal (porta 3010)
 │   ├── src/
-│   │   ├── main.ts         # Servidor Express (porta 3010)
-│   │   ├── database/
-│   │   │   ├── database.ts # SQLite (sql.js) com persistência
-│   │   │   └── migrations.ts # Migrações automáticas do banco
-│   │   ├── admin/
-│   │   │   ├── admin.ts    # CRUD clientes, apps, logs, stats
-│   │   │   └── license.ts  # Licenciamento (trial 10d, ativação, verificação)
-│   │   ├── chat/           # Conversas + LLM via OpenRouter
-│   │   ├── agenda/         # Compromissos CRUD
-│   │   ├── memory/         # Memória chave-valor
-│   │   ├── settings/       # Configurações
-│   │   └── llm/            # Integração OpenRouter
-│   └── data/kairos.db      # SQLite persistente
-├── frontend/               # PWA Next.js
-├── docker-compose.yml
-└── PROGRESS.md
+│   │   ├── main.ts             # Servidor Express
+│   │   ├── database/           # SQLite + Migrações + Backup
+│   │   ├── admin/              # Admin API (clientes, apps, licenças, backup)
+│   │   ├── chat/               # Conversas + LLM OpenRouter
+│   │   ├── agenda/             # Compromissos
+│   │   ├── memory/             # Memória chave-valor
+│   │   ├── settings/           # Configurações
+│   │   └── llm/                # LLM (GPT-OSS 120B free)
+│   └── data/kairos.db          # SQLite persistente
+│
+├── frontend/                   # PWA Next.js (porta 3008)
+│   ├── src/app/
+│   │   ├── page.tsx            # Chat + Agenda + Config + Admin (abas)
+│   │   └── layout.tsx          # PWA manifest + Service Worker
+│   └── public/
+│       ├── icons/              # 192x192, 512x512
+│       ├── manifest.json
+│       └── sw.js
+│
+├── foto-agenda/                # App FotoAgenda Pro
+│   ├── backend/                # FastAPI (porta 8005)
+│   │   └── app/                # SQLite + JWT + Licenciamento Kairos
+│   └── frontend/               # React + Vite + Nginx (porta 3015)
+│       ├── components/         # UI Components
+│       ├── services/           # API + Storage
+│       └── public/             # PWA icons + manifest
+│
+└── docker-compose.yml
 ```
 
-## API Endpoints
-### Chat
-- `GET /api/chat/conversations` - Listar conversas
-- `POST /api/chat/send` - Enviar mensagem
-- `GET /api/chat/conversations/:id` - Ver conversa
+## Serviços Rodando na VPS (187.77.229.227)
 
-### Administração (Kairos Admin)
-- `GET /api/admin/clients` - Listar clientes
-- `POST /api/admin/clients` - Criar cliente
-- `GET /api/admin/apps` - Listar apps
-- `POST /api/admin/apps` - Cadastrar app
-- `GET /api/admin/logs` - Visualizar logs
-- `GET /api/admin/stats` - Dashboard (totais)
+| Serviço | Porta | Acesso |
+|---------|-------|--------|
+| Kairos API (Admin) | 3010 | `http://187.77.229.227:3010/api/health` |
+| Kairos Frontend | 3008 | `http://187.77.229.227:3008` |
+| FotoAgenda API | 8005 | `http://187.77.229.227:8005/health` |
+| FotoAgenda Frontend | 3015 | `http://187.77.229.227:3015` |
 
-### Licenciamento
-- `POST /api/license/create-trial` - Criar trial (10 dias)
-- `GET /api/license/verify` - Verificar licença
-- `POST /api/license/activate` - Ativar licença (pós-pagamento)
-- `GET /api/license/list` - Listar licenças
-- `POST /api/license/check-expired` - Verificar expiradas
+## Domínios (Caddy)
 
-## Modelos de Dados
-### clientes
-id, name, company, phone, email, category, status, created_at, updated_at
+| Domínio | Proxy | Status |
+|---------|-------|--------|
+| `kairoassistente.fbautomacao.space` | → 127.0.0.1:3008 | ✅ HTTPS |
+| `fotoagenda.fbautomacao.space` | → 127.0.0.1:3015 | ✅ Caddy configurado |
+| Outros | vidro, imobiliaria, oficina, etc | Existentes |
 
-### licenses
-id, client_id, app_id, status (trial/active/expired/blocked), type (temporary/permanent), start_date, end_date
+## Apps Registrados no Admin
 
-### apps
-id, name, slug, description, created_at
-
-### logs
-id, client_id, app_id, action, details, ip, created_at
-
-### payments
-id, client_id, license_id, amount, method, status (pending/confirmed/cancelled)
+| App | Slug | ID |
+|-----|------|----|
+| Kairos Assistente | kairos-assistente | ✅ |
+| Oficina | oficina | ✅ |
+| Vidraçaria | vidracaria | ✅ |
+| Imobiliária | imobiliaria | ✅ |
+| Igreja | igreja | ✅ |
+| FotoAgenda Pro | fotoagenda | ✅ |
 
 ## Licenciamento
-- Trial automático de **10 dias** ao cadastrar cliente
-- Ao expirar: status = "expired", exibe mensagem de bloqueio
-- Após pagamento: status = "active", type = "permanent"
-- Todo app consulta `/api/license/verify` ao iniciar
-│   │   ├── memory/        # Memória chave-valor
-│   │   ├── settings/      # Configurações
-│   │   └── llm/           # Integração OpenRouter
-│   └── data/kairos.db
-├── frontend/              # Next.js PWA
-│   ├── public/
-│   │   ├── manifest.json  # PWA manifest
-│   │   ├── sw.js          # Service Worker
-│   │   └── icons/         # 192x192, 512x512
-│   └── src/
-│       ├── app/page.tsx   # Chat + Agenda + Config
-│       ├── hooks/         # Speech-to-Text, Text-to-Speech
-│       └── services/api.ts
-```
 
-## Funcionalidades Implementadas
-- [x] Chat com IA (OpenRouter - Llama 3.3 70B free)
-- [x] Conversação por voz (Web Speech API: STT + TTS)
-- [x] Agenda de compromissos
-- [x] Memória persistente (chave-valor)
-- [x] Configurações (chave OpenRouter)
-- [x] Múltiplas conversas
-- [x] PWA (manifest, service worker, ícones)
-- [x] SQLite persistente
-- [x] Interface mobile-first
+| Cliente | App | Status | Validade |
+|---------|-----|--------|----------|
+| Oficina Teste | Kairos Assistente | Trial → Ativo | 10 dias |
+| FotoStudio Teste | FotoAgenda | Trial | 10 dias |
 
-## Preparado para Expansões Futuras
-Estrutura de pastas e módulos preparados para:
-- WhatsApp
-- Google Sheets / Gmail / Calendar
-- YouTube
-- MCP Servers
-- Skills
-- CRM
-- Automações
+- **Trial automático**: 10 dias ao cadastrar
+- **Ativação**: via admin (Teste / Ativo / Bloqueado)
+- **Verificação**: app consulta `/api/license/verify` no startup
 
-## Como Rodar
-```bash
-# Backend
-cd backend
-echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
-npx tsx src/main.ts
+## Kairos Admin (aba no chat 🛡️)
 
-# Frontend
-cd frontend
-npx next dev
-```
+- Dashboard com stats (clientes, licenças ativas/trial/expiradas)
+- Cadastro de clientes (categorias: Oficina, Imobiliária, Vidraçaria, Igreja, Kairos Assistente, Clínica, Outros)
+- Gerenciamento de apps
+- Licenças com status toggle: Teste | 🟢 Ativo | 🔴 Bloqueado
+- Logs de ações
+- Backup automático a cada 6h (30 backups retidos)
 
-## Próximos Passos
-- [ ] Configurar variável de ambiente OPENROUTER_API_KEY
-- [ ] Colocar em produção (VPS ou celular)
-- [ ] Testar PWA no celular
+## LLM
+
+- **Modelo**: GPT-OSS 120B (free) via OpenRouter
+- **Contexto**: entende dados do Admin (clientes, licenças, apps)
+- **TTS**: resposta falada automaticamente
+- **STT**: microfone envia automaticamente
+
+## YouTube Auto Upload
+
+**Projeto separado**: `C:\Users\ferna\Videos\YouTube\`
+
+| Conta | Horários | Status |
+|-------|----------|--------|
+| fernandojaborges@gmail.com | 08:00, 12:00, 18:00 | ✅ Ativo |
+| secretariaobpc33@gmail.com | 08:30, 12:30, 18:30 | ✅ Ativo (descrição OBPC) |
+
+## Pendências / Próximos Passos
+
+- [ ] Configurar DNS para `fotoagenda.fbautomacao.space`
+- [ ] Migrar apps existentes (Oficina, Imobiliária, Vidraçaria, Igreja) para arquitetura única
+- [ ] Google Sheets como camada de relatórios
+- [ ] Frontend Kairos Admin completo (painel web dedicado)
+- [ ] Sistema de pagamentos
