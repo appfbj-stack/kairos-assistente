@@ -1,4 +1,4 @@
-import re, uuid
+import re, uuid, os, httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -57,6 +57,17 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email, User.active.is_(True)).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Email ou senha inválidos")
+
+    # Verificar licença no Kairos Admin
+    client_id = os.getenv("KAIROS_CLIENT_ID", "")
+    if client_id:
+        try:
+            r = httpx.get(f"http://backend:3010/api/license/verify?client_id={client_id}&app_slug=fotoagenda", timeout=3)
+            data = r.json()
+            if not data.get("valid"):
+                raise HTTPException(status_code=403, detail=data.get("message", "Acesso bloqueado"))
+        except httpx.RequestError:
+            pass  # Se Kairos Admin offline, permite acesso
 
     # Verifica se o tenant está ativo (bloqueio por inadimplência)
     if user.role != "super_admin":

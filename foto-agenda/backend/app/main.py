@@ -26,16 +26,18 @@ def _seed_admin():
 
 def check_license():
     client_id = os.getenv("KAIROS_CLIENT_ID", "").strip()
-    if not client_id: return print("KAIROS_CLIENT_ID não configurado")
+    if not client_id:
+        print("⚠️ KAIROS_CLIENT_ID não configurado - licenciamento desativado")
+        return
     try:
         r = httpx.get(f"http://backend:3010/api/license/verify?client_id={client_id}&app_slug=fotoagenda", timeout=5)
         data = r.json()
         if data.get("valid"):
-            print(f"✅ Licença: {data.get('status')} - {data.get('message')}")
+            print(f"✅ Licença Kairos: {data.get('status')} - {data.get('message')}")
         else:
-            print(f"❌ Licença: {data.get('status')} - {data.get('message')}")
+            print(f"❌ Licença Kairos: {data.get('status')} - {data.get('message')}")
     except Exception as e:
-        print(f"⚠️ Erro ao verificar licença: {e}")
+        print(f"⚠️ Kairos Admin não disponível: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

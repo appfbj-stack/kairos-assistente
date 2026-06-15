@@ -31,7 +31,7 @@ services:
     ports:
       - "8005:8000"
     environment:
-      - KAIROS_CLIENT_ID=
+      - KAIROS_CLIENT_ID=a2a2baa8-41d4-4cd5-b6d0-fd693844402a
       - ADMIN_EMAIL=admin@fotoagenda.com
       - ADMIN_PASSWORD=admin123
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
