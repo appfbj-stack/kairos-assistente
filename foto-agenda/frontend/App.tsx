@@ -102,6 +102,19 @@ function App() {
     const initData = async () => {
       setIsLoading(true);
       try {
+        // Google OAuth callback
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        if (code) {
+          try {
+            const { default: api } = await import('./services/api');
+            const res = await api.apiGoogleCallback(code);
+            if (res.access_token) {
+              api.setToken(res.access_token);
+              window.history.replaceState({}, "", window.location.pathname);
+            }
+          } catch(e) { console.error("Google login error:", e); }
+        }
         await storageService.migrateFromLocalStorage();
         // Load from API if logged in, fallback to local
         if (isLoggedIn()) {
