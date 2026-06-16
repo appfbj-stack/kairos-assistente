@@ -50,11 +50,15 @@ POSTGRES_PASSWORD=kairos123 OPENROUTER_API_KEY=sk-or-v1-... docker compose up -d
 
 ## Deploy em produção (VPS / Dokploy)
 
-O `docker-compose.yml` da raiz é o usado em produção: roteamento por
-domínio via Traefik, rede externa `kairos_network` compartilhada com os
-apps satélites, e todo o painel/API (exceto `/api/license/verify`, que
-precisa ficar público para os apps satélites) protegido por HTTP Basic
-Auth no proxy — o backend ainda não tem login próprio.
+O `docker-compose.yml` da raiz é o usado em produção: rede externa
+`kairos_network` compartilhada com os apps satélites, e todo o
+painel/API (exceto `/api/license/verify`, que precisa ficar público
+para os apps satélites) protegido por HTTP Basic Auth — implementado
+dentro da própria aplicação (Express middleware no backend, Next.js
+middleware no frontend), e não como label de um proxy específico
+(Traefik/Caddy/etc.), já que o backend ainda não tem login próprio e o
+proxy usado varia por VPS. O roteamento por domínio é feito na aba
+**Domains** do Dokploy.
 
 Passo a passo completo, variáveis de cada serviço e checklist de DNS:
 veja **[docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md)**.
@@ -66,13 +70,14 @@ ADMIN_DOMAIN=admin.fbautomacao.space
 POSTGRES_PASSWORD=...
 OPENROUTER_API_KEY=sk-or-v1-...
 TELEGRAM_BOT_TOKEN=...
-TRAEFIK_AUTH_USERS=usuario:$$apr1$$salt$$hash   # ver docs/DEPLOY_VPS.md
+BASIC_AUTH_USER=admin
+BASIC_AUTH_PASSWORD=...
 ```
 
 ## Verificar Licença
 
 ```bash
-curl "https://admin.fbautomacao.space/api/license/verify?client_id=UUID&app_slug=fotoagenda"
+curl "https://api.admin.fbautomacao.space/api/license/verify?client_id=UUID&app_slug=fotoagenda"
 ```
 
 ## Arquitetura

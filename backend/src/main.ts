@@ -19,6 +19,24 @@ const PORT = Number(process.env.PORT) || 3010;
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "50mb" }));
 
+const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;
+const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
+
+app.use((req: any, res: any, next: any) => {
+  // /api/license/verify fica público de propósito — é a rota que os apps satélites consultam sem credencial
+  if (req.path === "/api/license/verify" || !BASIC_AUTH_USER || !BASIC_AUTH_PASSWORD) {
+    return next();
+  }
+
+  const expected = "Basic " + Buffer.from(`${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}`).toString("base64");
+  if (req.headers.authorization === expected) {
+    return next();
+  }
+
+  res.set("WWW-Authenticate", 'Basic realm="Kairos Admin"');
+  return res.status(401).json({ error: "Autenticação necessária" });
+});
+
 app.use("/api/chat", chatRouter);
 app.use("/api/agenda", agendaRouter);
 app.use("/api/memory", memoryRouter);
