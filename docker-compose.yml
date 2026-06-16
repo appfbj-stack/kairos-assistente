@@ -4,31 +4,29 @@ services:
     environment:
       - POSTGRES_DB=kairos
       - POSTGRES_USER=kairos
-      - POSTGRES_PASSWORD=kairos123
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+    networks:
+      - kairos_network
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "3010:3010"
     environment:
       - PORT=3010
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=kairos
       - POSTGRES_USER=kairos
-      - POSTGRES_PASSWORD=kairos123
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     volumes:
@@ -36,51 +34,49 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
+    networks:
+      - kairos_network
+    labels:
+      - "traefik.enable=true"
+      # /api/license/verify fica público — os apps satélites consultam sem autenticação
+      - "traefik.http.routers.kairos-license.rule=Host(`${ADMIN_DOMAIN}`) && PathPrefix(`/api/license/verify`)"
+      - "traefik.http.routers.kairos-license.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kairos-license.priority=100"
+      - "traefik.http.routers.kairos-license.service=kairos-backend"
+      # Restante da API (/api/admin, /api/chat, /api/license/create-trial, etc.) — protegido por senha
+      - "traefik.http.routers.kairos-api.rule=Host(`${ADMIN_DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.kairos-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kairos-api.priority=50"
+      - "traefik.http.routers.kairos-api.service=kairos-backend"
+      - "traefik.http.routers.kairos-api.middlewares=kairos-auth"
+      - "traefik.http.services.kairos-backend.loadbalancer.server.port=3010"
+      - "traefik.http.middlewares.kairos-auth.basicauth.users=${TRAEFIK_AUTH_USERS}"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "3008:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:3010/api
+      args:
+        - NEXT_PUBLIC_API_URL=https://${ADMIN_DOMAIN}/api
     depends_on:
       - backend
-    restart: always
-
-  fotoagenda-backend:
-    build:
-      context: ./foto-agenda/backend
-      dockerfile: Dockerfile
-    ports:
-      - "8005:8000"
-    environment:
-      - KAIROS_CLIENT_ID=a2a2baa8-41d4-4cd5-b6d0-fd693844402a
-      - ADMIN_EMAIL=admin@fotoagenda.com
-      - ADMIN_PASSWORD=admin123
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-    volumes:
-      - fotoagenda_data:/app/data
-    restart: always
-
-  fotoagenda-frontend:
-    build:
-      context: ./foto-agenda/frontend
-      dockerfile: Dockerfile
-      args:
-        - VITE_API_URL=http://fotoagenda-backend:8000
-    ports:
-      - "3015:80"
-    depends_on:
-      - fotoagenda-backend
-    restart: always
+    restart: unless-stopped
+    networks:
+      - kairos_network
+    labels:
+      - "traefik.enable=true"
+      # Painel (UI) — protegido pela mesma senha da API
+      - "traefik.http.routers.kairos-frontend.rule=Host(`${ADMIN_DOMAIN}`)"
+      - "traefik.http.routers.kairos-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.kairos-frontend.priority=1"
+      - "traefik.http.routers.kairos-frontend.middlewares=kairos-auth"
+      - "traefik.http.services.kairos-frontend.loadbalancer.server.port=3000"
 
 volumes:
   postgres_data:
   kairos_data:
-  fotoagenda_data:
+
+networks:
+  kairos_network:
+    external: true

@@ -31,44 +31,48 @@ Plataforma SaaS de administração para gerenciar clientes, licenças, aplicativ
 - **Logs** — auditoria completa de todas as ações
 - **Configurações** — informações do sistema
 
-## Iniciando
+## Iniciando (desenvolvimento local)
 
 ```bash
-# Clonar e configurar
-cp .env.example .env
-# editar .env com suas chaves
+# Backend
+cp backend/.env.example backend/.env
+cd backend && npm install && npm run dev
 
-# Subir todos os serviços
-docker compose up -d --build
-
-# Ver logs
-docker compose logs -f backend
+# Frontend
+cp frontend/.env.example frontend/.env
+cd frontend && npm install && npm run dev
 ```
 
-## Variáveis de Ambiente
+Ou via Docker Compose local (sem Traefik):
+```bash
+POSTGRES_PASSWORD=kairos123 OPENROUTER_API_KEY=sk-or-v1-... docker compose up -d --build
+```
+
+## Deploy em produção (VPS / Dokploy)
+
+O `docker-compose.yml` da raiz é o usado em produção: roteamento por
+domínio via Traefik, rede externa `kairos_network` compartilhada com os
+apps satélites, e todo o painel/API (exceto `/api/license/verify`, que
+precisa ficar público para os apps satélites) protegido por HTTP Basic
+Auth no proxy — o backend ainda não tem login próprio.
+
+Passo a passo completo, variáveis de cada serviço e checklist de DNS:
+veja **[docs/DEPLOY_VPS.md](docs/DEPLOY_VPS.md)**.
+
+## Variáveis de Ambiente (produção)
 
 ```env
+ADMIN_DOMAIN=admin.fbautomacao.space
+POSTGRES_PASSWORD=...
 OPENROUTER_API_KEY=sk-or-v1-...
 TELEGRAM_BOT_TOKEN=...
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REDIRECT_URI=...
+TRAEFIK_AUTH_USERS=usuario:$$apr1$$salt$$hash   # ver docs/DEPLOY_VPS.md
 ```
-
-## Portas
-
-| Serviço | Porta |
-|---|---|
-| Kairos Admin (Frontend) | 3008 |
-| Kairos Core (Backend) | 3010 |
-| PostgreSQL | 5432 |
-| FotoAgenda Frontend | 3015 |
-| FotoAgenda Backend | 8005 |
 
 ## Verificar Licença
 
 ```bash
-curl "http://localhost:3010/api/license/verify?client_id=UUID&app_slug=fotoagenda"
+curl "https://admin.fbautomacao.space/api/license/verify?client_id=UUID&app_slug=fotoagenda"
 ```
 
 ## Arquitetura

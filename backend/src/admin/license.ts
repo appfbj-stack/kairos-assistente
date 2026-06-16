@@ -68,7 +68,7 @@ router.get("/verify", async (req: Request, res: Response) => {
     [client_id, app.id]
   );
 
-  if (!license) return res.json({ valid: false, status: "no_license", message: "Nenhuma licença encontrada." });
+  if (!license) return res.json({ valid: false, active: false, status: "no_license", message: "Nenhuma licença encontrada." });
 
   const now = new Date().toISOString().slice(0, 19).replace("T", " ");
   const l = license as any;
@@ -76,25 +76,27 @@ router.get("/verify", async (req: Request, res: Response) => {
   if (l.status === "trial" && l.end_date && l.end_date < now) {
     await runSql("UPDATE licenses SET status = 'expired', updated_at = NOW() WHERE id = ?", [l.id]);
     await addLog(l.client_id, l.app_id, "license_expired", `Licença trial expirou em ${l.end_date}`);
-    return res.json({ valid: false, status: "expired", message: "Período de avaliação encerrado. Entre em contato para ativação." });
+    return res.json({ valid: false, active: false, status: "expired", message: "Período de avaliação encerrado. Entre em contato para ativação." });
   }
 
-  if (l.status === "expired") return res.json({ valid: false, status: "expired", message: "Período de avaliação encerrado." });
-  if (l.status === "blocked") return res.json({ valid: false, status: "blocked", message: "Acesso bloqueado. Entre em contato com o suporte." });
+  if (l.status === "expired") return res.json({ valid: false, active: false, status: "expired", message: "Período de avaliação encerrado." });
+  if (l.status === "blocked") return res.json({ valid: false, active: false, status: "blocked", message: "Acesso bloqueado. Entre em contato com o suporte." });
 
   if (l.status === "active" || l.status === "trial") {
     await addLog(l.client_id, l.app_id, "license_verified", `Licença verificada: ${l.status}`);
     return res.json({
       valid: true,
+      active: true,
       status: l.status,
       type: l.type,
+      plan: l.type,
       client_name: l.client_name,
       days_remaining: l.end_date ? Math.max(0, Math.floor((new Date(l.end_date).getTime() - Date.now()) / 86400000)) : -1,
       message: "Acesso liberado.",
     });
   }
 
-  return res.json({ valid: false, status: l.status, message: "Status não reconhecido." });
+  return res.json({ valid: false, active: false, status: l.status, message: "Status não reconhecido." });
 });
 
 // Activate license (after payment)

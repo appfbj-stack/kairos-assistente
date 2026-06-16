@@ -19,6 +19,8 @@
 - [x] Módulo Backup — JSON export automático
 - [x] Telegram Bot (async)
 - [x] Docker Compose com PostgreSQL healthcheck
+- [x] Docker Compose de produção: Traefik + rede `kairos_network` + HTTP Basic Auth no painel/API
+- [x] Fix contrato de licença: `/api/license/verify` agora retorna `active` (além de `valid`) — bug que fazia o bloqueio de licença nunca funcionar nos 5 apps satélites
 
 ### Frontend (Admin Dashboard)
 - [x] Layout com Sidebar moderna (grupos: Admin / Ferramentas / Sistema)
