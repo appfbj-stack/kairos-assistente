@@ -9,6 +9,7 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | App | Slug | Tipo | Porta Frontend | Porta Backend | Repositório | Status |
 |---|---|---|---|---|---|---|
 | FotoAgenda Pro | `foto-agenda-pro` | Pro | 3015 | 8005 | [foto-agenda-v1](https://github.com/appfbj-stack/foto-agenda-v1) | ✅ Ativo |
+| Sede Sorocaba | `sede-sorocaba` | Pro | 3020 | 8010 | [sede-sorocaba](https://github.com/appfbj-stack/sede-sorocaba) | ✅ Ativo |
 
 ---
 
@@ -21,6 +22,8 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | PostgreSQL (Kairos) | 5432 |
 | FotoAgenda Pro Frontend | 3015 |
 | FotoAgenda Pro Backend | 8005 |
+| Sede Sorocaba Frontend | 3020 |
+| Sede Sorocaba Backend | 8010 |
 
 ### Faixa livre para novos apps
 - **Frontend**: 3020, 3025, 3030, 3035, 3040...

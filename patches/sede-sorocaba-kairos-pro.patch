@@ -1,0 +1,356 @@
+From bfe5db3482a0927c08caf596df9030f8e2a33669 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 18:49:40 +0000
+Subject: [PATCH] feat: integrate Kairos Admin license verification (Kairos Pro
+ standard)
+
+- Add backend/src/services/license.js: axios license check (fail-open)
+- Add backend/src/routes/licenseCheck.js: public GET /api/license/verify
+- Update auth.js: verify license in Google OAuth callback
+- Update server.js: register licenseCheck route, version 2.0.0
+- Add docker-compose.yml: backend + frontend, kairos_network, Traefik labels
+- Update backend/.env.example: document Kairos Admin variables
+- Add README.md: stack, deploy Dokploy, Kairos Admin contract
+---
+ README.md                          | 120 +++++++++++++++++++++++++++++
+ backend/.env.example               |  10 ++-
+ backend/src/routes/auth.js         |   7 ++
+ backend/src/routes/licenseCheck.js |  21 +++++
+ backend/src/server.js              |   3 +-
+ backend/src/services/license.js    |  35 +++++++++
+ docker-compose.yml                 |  55 +++++++++++++
+ 7 files changed, 248 insertions(+), 3 deletions(-)
+ create mode 100644 README.md
+ create mode 100644 backend/src/routes/licenseCheck.js
+ create mode 100644 backend/src/services/license.js
+ create mode 100644 docker-compose.yml
+
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..ddba65d
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,120 @@
++# Sede Sorocaba — OBPC
++
++Sistema de gestão eclesiástica para a Ordem Bíblica Pentecostal de Cristo — Sede Sorocaba.
++
++Parte do ecossistema **Kairos Pro** — requer Kairos Admin para gerenciamento de licença.
++
++---
++
++## Stack
++
++| Camada | Tecnologia |
++|--------|-----------|
++| Frontend | React 18 + Vite |
++| Backend | Node.js + Express |
++| Banco | SQLite (better-sqlite3) |
++| Auth | Google OAuth 2.0 + JWT |
++| Integração | Google Sheets, Drive, Calendar |
++| Deploy | Docker Compose + Traefik (Dokploy) |
++
++---
++
++## Funcionalidades
++
++- **Membros** — cadastro completo com foto, CPF, batismo, cargo
++- **Obreiros** — credenciais, validade, categoria
++- **Congregações** — gestão multi-congregação da sede
++- **Patrimônio** — inventário por congregação com fotos
++- **Agenda** — eventos integrados com Google Calendar
++- **Batismos** — registros históricos
++- **Carteirinhas** — emissão com QR Code
++- **Documentos** — integrado com Google Drive
++- **Importação** — CSV/Excel, OCR de documentos
++- **Assistente IA** — via OpenRouter
++- **Sincronização** — fila de sync com Google Sheets
++
++---
++
++## Configuração local
++
++```bash
++# 1. Clone
++git clone https://github.com/appfbj-stack/sede-sorocaba.git
++cd sede-sorocaba
++
++# 2. Backend
++cp backend/.env.example backend/.env
++# Edite backend/.env com suas credenciais
++
++cd backend
++npm install
++npm run dev
++
++# 3. Frontend (outro terminal)
++cd frontend
++npm install
++npm run dev
++```
++
++---
++
++## Variáveis de ambiente
++
++| Variável | Descrição |
++|----------|-----------|
++| `GOOGLE_CLIENT_ID` | Client ID do Google OAuth |
++| `GOOGLE_CLIENT_SECRET` | Client Secret do Google OAuth |
++| `GOOGLE_REDIRECT_URI` | URL de callback OAuth |
++| `JWT_SECRET` | Chave secreta JWT |
++| `FRONTEND_URL` | URL do frontend |
++| `ADMIN_EMAIL` | E-mail do administrador da sede |
++| `OPENROUTER_API_KEY` | Chave para Assistente IA |
++| `DB_PATH` | Caminho do arquivo SQLite |
++| `KAIROS_ADMIN_URL` | URL do Kairos Admin (ex: `https://admin.fbautomacao.space`) |
++| `KAIROS_CLIENT_ID` | UUID do app registrado no Kairos Admin |
++| `APP_SLUG` | `sede-sorocaba` (fixo) |
++
++---
++
++## Integração Kairos Admin
++
++**Endpoint público** (chamado pelo Kairos Admin para health check):
++```
++GET /api/license/verify?client_id={UUID}&app_slug=sede-sorocaba
++→ { "app": "Sede Sorocaba — Kairos Pro", "slug": "sede-sorocaba", "client_id": "...", "online": true }
++```
++
++**Verificação no login** — após o callback do Google OAuth, o sistema consulta o Kairos Admin para validar a licença. Se o Kairos Admin estiver indisponível, o login prossegue normalmente (fail-open).
++
++---
++
++## Deploy no Dokploy
++
++1. Crie um serviço **Docker Compose** no Dokploy apontando para este repositório
++2. Configure as variáveis de ambiente na interface do Dokploy
++3. Certifique-se de que a rede `kairos_network` existe: `docker network create kairos_network`
++4. Registre o app no Kairos Admin e copie o `KAIROS_CLIENT_ID`
++5. Configure o Google OAuth no [Google Cloud Console](https://console.cloud.google.com) com a URL de callback correta
++
++---
++
++## Estrutura do projeto
++
++```
++sede-sorocaba/
++├── backend/
++│   ├── src/
++│   │   ├── db/           # SQLite schema e migrações
++│   │   ├── middleware/   # auth JWT
++│   │   ├── routes/       # auth, membros, obreiros, congregacoes...
++│   │   └── services/     # google.js, sheets.js, license.js
++│   ├── Dockerfile
++│   └── .env.example
++├── frontend/
++│   ├── src/
++│   │   ├── pages/        # Dashboard, Membros, Obreiros...
++│   │   └── services/     # api.js
++│   ├── Dockerfile
++│   └── nginx.conf
++└── docker-compose.yml
++```
+diff --git a/backend/.env.example b/backend/.env.example
+index e3785f0..abfec81 100644
+--- a/backend/.env.example
++++ b/backend/.env.example
+@@ -4,13 +4,13 @@ PORT=3001
+ # Google OAuth - https://console.cloud.google.com
+ GOOGLE_CLIENT_ID=seu_client_id_aqui
+ GOOGLE_CLIENT_SECRET=seu_client_secret_aqui
+-GOOGLE_REDIRECT_URI=https://seu-dominio.com/api/auth/google/callback
++GOOGLE_REDIRECT_URI=https://api.sede.fbautomacao.space/api/auth/google/callback
+ 
+ # JWT
+ JWT_SECRET=gere_uma_chave_forte_aqui_minimo_32_chars
+ 
+ # Frontend URL
+-FRONTEND_URL=https://seu-dominio.com
++FRONTEND_URL=https://sede.fbautomacao.space
+ 
+ # Email (conta Gmail com senha de app)
+ EMAIL_FROM=kairos@obpcsorocaba.com.br
+@@ -24,3 +24,9 @@ OPENROUTER_API_KEY=sk-or-v1-sua_chave_aqui
+ 
+ # Banco de dados SQLite
+ DB_PATH=/app/data/kairos.db
++
++# Kairos Admin — integração de licença
++# Obtenha o KAIROS_CLIENT_ID registrando este app no painel Kairos Admin
++KAIROS_ADMIN_URL=https://admin.fbautomacao.space
++KAIROS_CLIENT_ID=
++APP_SLUG=sede-sorocaba
+diff --git a/backend/src/routes/auth.js b/backend/src/routes/auth.js
+index f5884e8..8858b3f 100644
+--- a/backend/src/routes/auth.js
++++ b/backend/src/routes/auth.js
+@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
+ const { getAuthUrl, getTokensFromCode, getUserInfo } = require('../services/google');
+ const { getDb } = require('../db/schema');
+ const { autenticar } = require('../middleware/auth');
++const { verificarLicenca } = require('../services/license');
+ 
+ const router = express.Router();
+ 
+@@ -27,6 +28,12 @@ router.get('/google/callback', async (req, res) => {
+       return res.redirect(`${process.env.FRONTEND_URL}/acesso-negado?email=${encodeURIComponent(userInfo.email)}`);
+     }
+ 
++    // Verifica licença no Kairos Admin (falha aberta se Admin indisponível)
++    const licenca = await verificarLicenca();
++    if (licenca.bloqueada) {
++      return res.redirect(`${process.env.FRONTEND_URL}/acesso-negado?motivo=licenca`);
++    }
++
+     // Salva tokens do admin para uso nos serviços Google
+     if (usuario.perfil === 'sede') {
+       db.prepare("INSERT OR REPLACE INTO configuracoes (chave, valor) VALUES ('admin_tokens', ?)").run(JSON.stringify(tokens));
+diff --git a/backend/src/routes/licenseCheck.js b/backend/src/routes/licenseCheck.js
+new file mode 100644
+index 0000000..6dee0b3
+--- /dev/null
++++ b/backend/src/routes/licenseCheck.js
+@@ -0,0 +1,21 @@
++/**
++ * Endpoint público chamado pelo Kairos Admin para verificar se este app
++ * está online e com o contrato de licença implementado.
++ *
++ * Contrato: GET /api/license/verify?client_id={UUID}&app_slug={slug}
++ */
++const express = require('express');
++const router = express.Router();
++
++const APP_SLUG = process.env.APP_SLUG || 'sede-sorocaba';
++
++router.get('/verify', (req, res) => {
++  res.json({
++    app: 'Sede Sorocaba — Kairos Pro',
++    slug: APP_SLUG,
++    client_id: req.query.client_id || '',
++    online: true,
++  });
++});
++
++module.exports = router;
+diff --git a/backend/src/server.js b/backend/src/server.js
+index 9a7adf0..f5b833f 100644
+--- a/backend/src/server.js
++++ b/backend/src/server.js
+@@ -28,9 +28,10 @@ app.use('/api/importacao', require('./routes/importacao'));
+ app.use('/api/carteirinhas', require('./routes/carteirinhas'));
+ app.use('/api/batismos', require('./routes/batismos'));
+ app.use('/api/documentos', require('./routes/documentos'));
++app.use('/api/license', require('./routes/licenseCheck'));
+ 
+ // Health check
+-app.get('/api/health', (req, res) => res.json({ status: 'ok', versao: '1.0.0', timestamp: new Date().toISOString() }));
++app.get('/api/health', (req, res) => res.json({ status: 'ok', versao: '2.0.0', timestamp: new Date().toISOString() }));
+ 
+ // Sincronização a cada 2 minutos
+ cron.schedule('*/2 * * * *', () => {
+diff --git a/backend/src/services/license.js b/backend/src/services/license.js
+new file mode 100644
+index 0000000..fd9dfa5
+--- /dev/null
++++ b/backend/src/services/license.js
+@@ -0,0 +1,35 @@
++/**
++ * Kairos Admin license verification service.
++ *
++ * Calls the Kairos Admin API to check if this app instance has an active
++ * license. If KAIROS_ADMIN_URL or KAIROS_CLIENT_ID are not set, the check
++ * is skipped so local development works without Kairos Admin running.
++ */
++const axios = require('axios');
++
++const APP_SLUG = process.env.APP_SLUG || 'sede-sorocaba';
++
++async function verificarLicenca() {
++  const adminUrl = process.env.KAIROS_ADMIN_URL;
++  const clientId = process.env.KAIROS_CLIENT_ID;
++
++  if (!adminUrl || !clientId) {
++    return { ativa: true, plano: 'unknown', bloqueada: false };
++  }
++
++  const url = `${adminUrl.replace(/\/$/, '')}/api/license/verify?client_id=${clientId}&app_slug=${APP_SLUG}`;
++
++  try {
++    const { data } = await axios.get(url, { timeout: 5000 });
++    return {
++      ativa: data.active !== false,
++      plano: data.plan || 'unknown',
++      bloqueada: data.active === false,
++    };
++  } catch {
++    // Kairos Admin indisponível — fail open
++    return { ativa: true, plano: 'unknown', bloqueada: false };
++  }
++}
++
++module.exports = { verificarLicenca };
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..c0eb0a9
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,55 @@
++version: "3.9"
++
++services:
++  backend:
++    build:
++      context: ./backend
++      dockerfile: Dockerfile
++    restart: unless-stopped
++    environment:
++      NODE_ENV: production
++      PORT: 3001
++      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
++      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
++      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
++      JWT_SECRET: ${JWT_SECRET}
++      FRONTEND_URL: ${FRONTEND_URL}
++      EMAIL_FROM: ${EMAIL_FROM:-}
++      EMAIL_PASS: ${EMAIL_PASS:-}
++      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@obpcsorocaba.com.br}
++      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
++      DB_PATH: /app/data/kairos.db
++      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL:-}
++      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
++      APP_SLUG: sede-sorocaba
++    volumes:
++      - backend_data:/app/data
++      - backend_uploads:/app/uploads
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.sede-api.rule=Host(`api.sede.fbautomacao.space`)"
++      - "traefik.http.routers.sede-api.tls.certresolver=letsencrypt"
++      - "traefik.http.services.sede-api.loadbalancer.server.port=3001"
++
++  frontend:
++    build:
++      context: ./frontend
++      dockerfile: Dockerfile
++    restart: unless-stopped
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.sede-frontend.rule=Host(`sede.fbautomacao.space`)"
++      - "traefik.http.routers.sede-frontend.tls.certresolver=letsencrypt"
++      - "traefik.http.services.sede-frontend.loadbalancer.server.port=80"
++
++volumes:
++  backend_data:
++  backend_uploads:
++
++networks:
++  kairos_network:
++    external: true
+-- 
+2.43.0
+
