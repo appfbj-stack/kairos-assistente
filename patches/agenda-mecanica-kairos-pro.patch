@@ -1,0 +1,261 @@
+From 85dc82f32cc2d450ba8ded508014cb563f1acfae Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 19:34:20 +0000
+Subject: [PATCH] feat: integrate Kairos Admin license verification (Kairos Pro
+ standard)
+
+- Add backend/app/services/license.py: async license check (fail-open)
+- Add backend/app/routes/license_check.py: public GET /api/license/verify
+- Update config.py: KAIROS_ADMIN_URL, KAIROS_CLIENT_ID, APP_SLUG
+- Update auth.py: async login with check_tenant_license call
+- Update main.py: register license_router, version 2.0.0
+- Update docker-compose.yml: kairos_network, Traefik labels, Kairos env vars
+- Update .env.example: Kairos Admin variables documented
+---
+ .env.example                        |  8 +++++-
+ backend/app/core/config.py          |  5 ++++
+ backend/app/main.py                 |  6 +++--
+ backend/app/routes/auth.py          |  8 ++++--
+ backend/app/routes/license_check.py | 18 +++++++++++++
+ backend/app/services/license.py     | 42 +++++++++++++++++++++++++++++
+ docker-compose.yml                  | 30 ++++++++++++++++++---
+ 7 files changed, 108 insertions(+), 9 deletions(-)
+ create mode 100644 backend/app/routes/license_check.py
+ create mode 100644 backend/app/services/license.py
+
+diff --git a/.env.example b/.env.example
+index f065b50..7020395 100644
+--- a/.env.example
++++ b/.env.example
+@@ -13,4 +13,10 @@ ADMIN_PASSWORD=senha-segura-aqui
+ VITE_API_URL=http://localhost:8000
+ 
+ # URL pública da API (injetada em runtime no container frontend — sem rebuild)
+-API_URL=https://api.suaoficina.com
++API_URL=https://api.mecanica.fbautomacao.space
++
++# ── Kairos Admin — integração de licença ─────────────────────────────────────
++# Obtenha o KAIROS_CLIENT_ID registrando este app no painel Kairos Admin
++KAIROS_ADMIN_URL=https://admin.fbautomacao.space
++KAIROS_CLIENT_ID=
++APP_SLUG=agenda-mecanica-pro
+diff --git a/backend/app/core/config.py b/backend/app/core/config.py
+index f71372a..4ef17dd 100644
+--- a/backend/app/core/config.py
++++ b/backend/app/core/config.py
+@@ -20,5 +20,10 @@ class Settings(BaseSettings):
+     HERMES_EMAIL: str = ""        # email do admin no sistema Hermes
+     HERMES_PASSWORD: str = ""     # senha do admin no sistema Hermes
+ 
++    # Kairos Admin integration
++    KAIROS_ADMIN_URL: str = ""           # ex: https://admin.fbautomacao.space
++    KAIROS_CLIENT_ID: str = ""           # UUID atribuído no Kairos Admin
++    APP_SLUG: str = "agenda-mecanica-pro"  # deve coincidir com o slug registrado
++
+ 
+ settings = Settings()
+diff --git a/backend/app/main.py b/backend/app/main.py
+index 4144b48..79e77a4 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -11,13 +11,14 @@ from app.routes.admin import router as admin_router
+ from app.routes.auth import router as auth_router
+ from app.routes.crm import router as crm_router
+ from app.routes.hermes import router as hermes_router
++from app.routes.license_check import router as license_router
+ from app.routes.panel import router as panel_router
+ from app.routes.workshop import router as workshop_router
+ 
+ logging.basicConfig(level=logging.INFO)
+ logger = logging.getLogger(__name__)
+ 
+-app = FastAPI(title="Oficina Mecânica API", version="1.0.0")
++app = FastAPI(title="Agenda Mecânica Pro API", version="2.0.0")
+ 
+ app.add_middleware(
+     CORSMiddleware,
+@@ -72,7 +73,8 @@ app.include_router(workshop_router)
+ app.include_router(crm_router)
+ app.include_router(hermes_router)
+ app.include_router(panel_router)
++app.include_router(license_router)
+ 
+ @app.get("/health")
+ def health():
+-    return {"status": "ok", "version": "1.0.0"}
++    return {"status": "ok", "version": "2.0.0"}
+diff --git a/backend/app/routes/auth.py b/backend/app/routes/auth.py
+index d69ef19..10f272f 100644
+--- a/backend/app/routes/auth.py
++++ b/backend/app/routes/auth.py
+@@ -14,6 +14,7 @@ from app.core.security import (
+ )
+ from app.deps import get_current_user
+ from app.models import MODULES, Tenant, TenantModule, User, WorkshopSettings
++from app.services.license import check_tenant_license
+ from app.schemas import (
+     ChangePasswordRequest,
+     LoginRequest,
+@@ -74,12 +75,12 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+ 
+ 
+ @router.post("/login", response_model=TokenResponse)
+-def login(payload: LoginRequest, db: Session = Depends(get_db)):
++async def login(payload: LoginRequest, db: Session = Depends(get_db)):
+     user = db.query(User).filter(User.email == payload.email, User.active.is_(True)).first()
+     if not user or not verify_password(payload.password, user.password_hash):
+         raise HTTPException(status_code=401, detail="E-mail ou senha inválidos")
+ 
+-    # Verifica se o tenant está ativo (bloqueio por inadimplência)
++    # Verifica se o tenant está ativo (bloqueio local)
+     if user.role != "super_admin":
+         tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+         if not tenant or not tenant.active:
+@@ -88,6 +89,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
+                 detail="Conta suspensa. Entre em contato com o suporte."
+             )
+ 
++        # Verifica licença no Kairos Admin (falha aberta se indisponível)
++        await check_tenant_license(tenant.slug)
++
+     token = create_access_token({"sub": str(user.id), "tenant_id": str(user.tenant_id)})
+     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
+ 
+diff --git a/backend/app/routes/license_check.py b/backend/app/routes/license_check.py
+new file mode 100644
+index 0000000..6f80663
+--- /dev/null
++++ b/backend/app/routes/license_check.py
+@@ -0,0 +1,18 @@
++"""
++Public endpoint for Kairos Admin health check.
++Contract: GET /api/license/verify?client_id={UUID}&app_slug={slug}
++"""
++from fastapi import APIRouter, Query
++from app.core.config import settings
++
++router = APIRouter(prefix="/api/license", tags=["license"])
++
++
++@router.get("/verify")
++def license_verify(client_id: str = Query(...), app_slug: str = Query(...)):
++    return {
++        "app": "Agenda Mecânica Pro",
++        "slug": settings.APP_SLUG,
++        "client_id": client_id,
++        "online": True,
++    }
+diff --git a/backend/app/services/license.py b/backend/app/services/license.py
+new file mode 100644
+index 0000000..8dfd9c5
+--- /dev/null
++++ b/backend/app/services/license.py
+@@ -0,0 +1,42 @@
++"""
++Kairos Admin license verification service.
++Fail-open: if KAIROS_ADMIN_URL or KAIROS_CLIENT_ID are not set, the check is skipped.
++"""
++import httpx
++from app.core.config import settings
++
++
++async def verify_license(client_id: str) -> dict:
++    if not settings.KAIROS_ADMIN_URL or not settings.KAIROS_CLIENT_ID:
++        return {"active": True, "plan": "unknown", "blocked": False}
++
++    url = (
++        f"{settings.KAIROS_ADMIN_URL.rstrip('/')}"
++        f"/api/license/verify"
++        f"?client_id={client_id}&app_slug={settings.APP_SLUG}"
++    )
++    try:
++        async with httpx.AsyncClient(timeout=5.0) as client:
++            resp = await client.get(url)
++            if resp.status_code == 200:
++                data = resp.json()
++                return {
++                    "active": data.get("active", True),
++                    "plan": data.get("plan", "unknown"),
++                    "blocked": not data.get("active", True),
++                }
++    except Exception:
++        pass
++
++    return {"active": True, "plan": "unknown", "blocked": False}
++
++
++async def check_tenant_license(tenant_slug: str) -> None:
++    from fastapi import HTTPException
++
++    result = await verify_license(tenant_slug)
++    if result.get("blocked"):
++        raise HTTPException(
++            status_code=403,
++            detail="Licença expirada ou suspensa. Entre em contato com o administrador.",
++        )
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 2e2a220..10de048 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -15,32 +15,54 @@ services:
+       interval: 5s
+       timeout: 5s
+       retries: 5
++    networks:
++      - kairos_network
+ 
+   backend:
+     build:
+       context: ./backend
+       dockerfile: Dockerfile
+     restart: unless-stopped
+-    ports:
+-      - "8000:8000"
+     environment:
+       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/oficina
+       SECRET_KEY: ${SECRET_KEY:-changeme-in-production}
+       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@oficina.com}
+       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
++      HERMES_API_URL: ${HERMES_API_URL:-}
++      HERMES_EMAIL: ${HERMES_EMAIL:-}
++      HERMES_PASSWORD: ${HERMES_PASSWORD:-}
++      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL:-}
++      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
++      APP_SLUG: agenda-mecanica-pro
+     depends_on:
+       db:
+         condition: service_healthy
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.agenda-mecanica-api.rule=Host(`api.mecanica.fbautomacao.space`)"
++      - "traefik.http.routers.agenda-mecanica-api.tls.certresolver=letsencrypt"
++      - "traefik.http.services.agenda-mecanica-api.loadbalancer.server.port=8000"
+ 
+   frontend:
+     build:
+       context: .
+       dockerfile: Dockerfile.frontend
+     restart: unless-stopped
+-    ports:
+-      - "3000:80"
+     depends_on:
+       - backend
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.agenda-mecanica.rule=Host(`mecanica.fbautomacao.space`)"
++      - "traefik.http.routers.agenda-mecanica.tls.certresolver=letsencrypt"
++      - "traefik.http.services.agenda-mecanica.loadbalancer.server.port=80"
+ 
+ volumes:
+   pgdata:
++
++networks:
++  kairos_network:
++    external: true
+-- 
+2.43.0
+

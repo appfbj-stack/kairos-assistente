@@ -12,6 +12,7 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Sede Sorocaba | `sede-sorocaba` | Pro | 3020 | 8010 | [sede-sorocaba](https://github.com/appfbj-stack/sede-sorocaba) | ✅ Ativo |
 | Orçamentos Vidraçaria | `vidra-aria-top` | Lite | 3025 | — | [vidra-aria-top](https://github.com/appfbj-stack/vidra-aria-top) | ✅ Ativo |
 | Imobiliária Inteligente | `imobiliaria-inteligente` | Pro | 3030 | — | [imobiliaria-inteligente](https://github.com/appfbj-stack/imobiliaria-inteligente) | ✅ Ativo |
+| Agenda Mecânica Pro | `agenda-mecanica-pro` | Pro | 3035 | 8015 | [agenda-mecanica](https://github.com/appfbj-stack/agenda-mecanica) | ✅ Ativo |
 
 ---
 
@@ -28,6 +29,8 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Sede Sorocaba Backend | 8010 |
 | Orçamentos Vidraçaria (Lite) | 3025 |
 | Imobiliária Inteligente | 3030 |
+| Agenda Mecânica Pro Frontend | 3035 |
+| Agenda Mecânica Pro Backend | 8015 |
 
 ### Faixa livre para novos apps
 - **Frontend**: 3020, 3025, 3030, 3035, 3040...
