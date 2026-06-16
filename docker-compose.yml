@@ -1,4 +1,21 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=kairos
+      - POSTGRES_USER=kairos
+      - POSTGRES_PASSWORD=kairos123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
       context: ./backend
@@ -6,11 +23,19 @@ services:
     ports:
       - "3010:3010"
     environment:
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - PORT=3010
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=kairos
+      - POSTGRES_USER=kairos
+      - POSTGRES_PASSWORD=kairos123
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
     volumes:
       - kairos_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: always
 
   frontend:
@@ -56,5 +81,6 @@ services:
     restart: always
 
 volumes:
+  postgres_data:
   kairos_data:
   fotoagenda_data:

@@ -4,7 +4,8 @@
 
 :root {
   --kairos-primary: #4c6ef5;
-  --kairos-primary-light: #dbe4ff;
+  --kairos-primary-dark: #364fc7;
+  --sidebar-width: 240px;
 }
 
 * {
@@ -13,36 +14,74 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+}
+
+/* Dark mode */
+.dark body {
+  background: #0f1117;
+  color: #e2e8f0;
 }
 
 @layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-kairos-500 text-white rounded-lg text-sm font-medium hover:bg-kairos-600 transition-colors active:scale-95 disabled:opacity-40;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors;
+  }
+
   .btn-icon {
-    @apply flex items-center justify-center w-12 h-12 rounded-full transition-colors duration-200;
+    @apply flex items-center justify-center w-10 h-10 rounded-full transition-colors duration-200;
   }
 
-  .btn-icon:active {
-    @apply scale-95;
+  .card {
+    @apply bg-white rounded-xl border border-gray-100 shadow-sm dark:bg-gray-800 dark:border-gray-700;
   }
 
-  .message-bubble {
-    @apply px-4 py-3 rounded-2xl max-w-[85%] leading-relaxed;
+  .input {
+    @apply w-full px-3 py-2 rounded-lg border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-kairos-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white;
+  }
+
+  .badge-active {
+    @apply text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium;
+  }
+
+  .badge-trial {
+    @apply text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium;
+  }
+
+  .badge-expired {
+    @apply text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium;
+  }
+
+  .badge-blocked {
+    @apply text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium;
   }
 
   .message-user {
-    @apply message-bubble bg-kairos-500 text-white ml-auto rounded-br-md;
+    @apply px-4 py-3 rounded-2xl max-w-[85%] leading-relaxed bg-kairos-500 text-white ml-auto rounded-br-md;
   }
 
   .message-assistant {
-    @apply message-bubble bg-white border border-gray-100 shadow-sm mr-auto rounded-bl-md;
+    @apply px-4 py-3 rounded-2xl max-w-[85%] leading-relaxed bg-white border border-gray-100 shadow-sm mr-auto rounded-bl-md dark:bg-gray-800 dark:border-gray-700;
   }
 }
 
-input, textarea, button {
-  font-size: 16px !important;
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+.dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+
+input, textarea, button, select {
+  font-size: 14px !important;
 }

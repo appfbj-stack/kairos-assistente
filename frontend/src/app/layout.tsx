@@ -2,21 +2,16 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Kairos",
-  description: "Assistente pessoal inteligente com memória, agenda e conversação por voz.",
+  title: "Kairos Admin 2.0",
+  description: "Plataforma SaaS de administração — clientes, licenças, aplicativos e monitoramento.",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Kairos",
-  },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Kairos" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false,
   themeColor: "#4c6ef5",
 };
 
@@ -28,16 +23,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ("serviceWorker" in navigator) {
-                window.addEventListener("load", () => {
-                  navigator.serviceWorker.register("/sw.js");
-                });
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+              }
+              const saved = localStorage.getItem('theme');
+              if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
               }
             `,
           }}
         />
       </head>
-      <body className="h-full">{children}</body>
+      <body className="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white">
+        {children}
+      </body>
     </html>
   );
 }
