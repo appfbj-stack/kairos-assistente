@@ -1,0 +1,284 @@
+From 0b550cd7254bb7e3d07cf2015ea7f2059d3d73c2 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 19:01:15 +0000
+Subject: [PATCH] feat: integrate Kairos Lite license gate and standardize
+ config
+
+- Add src/components/LicenseGate.tsx: client-side license check (fail-open)
+- Update src/main.tsx: wrap App with LicenseGate
+- Update src/api.ts: VITE_SHEETS_API_URL env var (fallback to current URL)
+- Update Dockerfile: accept VITE_* ARGs for build-time injection
+- Add docker-compose.yml: frontend with kairos_network, Traefik labels
+- Update .env.example: Kairos Lite variables documented
+- Update README.md: Kairos Lite standards, deploy instructions
+---
+ .env.example                   | 21 ++++----
+ Dockerfile                     | 11 ++++
+ README.md                      | 93 ++++++++++++++++++++++++++--------
+ docker-compose.yml             | 24 +++++++++
+ src/api.ts                     |  2 +-
+ src/components/LicenseGate.tsx | 45 ++++++++++++++++
+ src/main.tsx                   |  5 +-
+ 7 files changed, 170 insertions(+), 31 deletions(-)
+ create mode 100644 docker-compose.yml
+ create mode 100644 src/components/LicenseGate.tsx
+
+diff --git a/.env.example b/.env.example
+index 237fa4c..4398b35 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1,9 +1,12 @@
+-# GEMINI_API_KEY: Required for Gemini AI API calls.
+-# AI Studio automatically injects this at runtime from user secrets.
+-# Users configure this via the Secrets panel in the AI Studio UI.
+-GEMINI_API_KEY="MY_GEMINI_API_KEY"
+-
+-# APP_URL: The URL where this applet is hosted.
+-# AI Studio automatically injects this at runtime with the Cloud Run service URL.
+-# Used for self-referential links, OAuth callbacks, and API endpoints.
+-APP_URL="MY_APP_URL"
++# Kairos Sheets API — proxy para Google Sheets
++# URL do servidor Kairos Lite API que serve os dados da planilha
++VITE_SHEETS_API_URL=http://187.77.229.227:3335/api/apps/vidracaria
++
++# Gemini AI (opcional)
++GEMINI_API_KEY=
++
++# Kairos Admin — controle de licença
++# Obtenha o VITE_KAIROS_CLIENT_ID registrando este app no painel Kairos Admin
++VITE_KAIROS_ADMIN_URL=https://admin.fbautomacao.space
++VITE_KAIROS_CLIENT_ID=
++VITE_APP_SLUG=vidra-aria-top
+diff --git a/Dockerfile b/Dockerfile
+index 38b9c26..658a427 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -5,6 +5,17 @@ COPY package.json package-lock.json ./
+ RUN npm ci
+ 
+ COPY . .
++
++# Kairos Lite build-time env vars (VITE_* are baked into the bundle)
++ARG VITE_SHEETS_API_URL
++ARG VITE_KAIROS_ADMIN_URL
++ARG VITE_KAIROS_CLIENT_ID
++ARG VITE_APP_SLUG
++ENV VITE_SHEETS_API_URL=$VITE_SHEETS_API_URL
++ENV VITE_KAIROS_ADMIN_URL=$VITE_KAIROS_ADMIN_URL
++ENV VITE_KAIROS_CLIENT_ID=$VITE_KAIROS_CLIENT_ID
++ENV VITE_APP_SLUG=$VITE_APP_SLUG
++
+ RUN npm run build
+ 
+ FROM nginx:alpine
+diff --git a/README.md b/README.md
+index 8ea9e7d..3b03b7d 100644
+--- a/README.md
++++ b/README.md
+@@ -1,20 +1,73 @@
+-<div align="center">
+-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
+-</div>
+-
+-# Run and deploy your AI Studio app
+-
+-This contains everything you need to run your app locally.
+-
+-View your app in AI Studio: https://ai.studio/apps/a8a7a6d9-4df6-443a-ae20-4c9b6c7377fe
+-
+-## Run Locally
+-
+-**Prerequisites:**  Node.js
+-
+-
+-1. Install dependencies:
+-   `npm install`
+-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+-3. Run the app:
+-   `npm run dev`
++# Orçamentos Vidraçaria
++
++Sistema para gestão de clientes, precificação e geração de orçamentos profissionais para vidraçarias.
++
++Parte do ecossistema **Kairos Lite** — frontend puro, dados via Google Sheets, sem backend dedicado.
++
++---
++
++## Stack
++
++| Camada | Tecnologia |
++|--------|-----------|
++| Frontend | React 19 + Vite + TypeScript + Tailwind v4 |
++| Dados | Google Sheets via Kairos Sheets API |
++| Cache | localStorage (offline-first) |
++| IA | Gemini API |
++| Deploy | Docker + nginx + Traefik (Dokploy) |
++
++---
++
++## Funcionalidades
++
++- **Orçamentos** — criador com seleção de vidros, ferragens e perfis de alumínio
++- **Clientes** — cadastro com histórico de orçamentos
++- **Precificação** — tabela de preços por tipo/cor de vidro, kits de ferragens, perfis
++- **Dashboard** — estatísticas (total, aprovados, pendentes, valor)
++- **PDF** — exportação de orçamentos para impressão
++- **PWA** — instalável no celular
++
++---
++
++## Configuração local
++
++```bash
++git clone https://github.com/appfbj-stack/vidra-aria-top.git
++cd vidra-aria-top
++cp .env.example .env
++npm install
++npm run dev
++```
++
++---
++
++## Variáveis de ambiente
++
++| Variável | Descrição |
++|----------|-----------|
++| `VITE_SHEETS_API_URL` | URL da Kairos Sheets API para este app |
++| `GEMINI_API_KEY` | Chave da API Gemini (opcional) |
++| `VITE_KAIROS_ADMIN_URL` | URL do Kairos Admin |
++| `VITE_KAIROS_CLIENT_ID` | UUID do app registrado no Kairos Admin |
++| `VITE_APP_SLUG` | `vidra-aria-top` (fixo) |
++
++---
++
++## Integração Kairos Admin (Lite)
++
++A verificação de licença é feita no client-side via `LicenseGate`:
++
++- No mount, consulta `VITE_KAIROS_ADMIN_URL/api/license/verify`
++- Se `active: false` → exibe tela de bloqueio
++- Se Kairos Admin indisponível → app funciona normalmente (fail-open)
++
++> Variáveis `VITE_*` são embutidas no bundle no build. Configure no Dokploy **antes** do deploy.
++
++---
++
++## Deploy no Dokploy
++
++1. Serviço **Docker Compose** apontando para este repositório
++2. Configure `VITE_KAIROS_CLIENT_ID` e `VITE_SHEETS_API_URL`
++3. Rede `kairos_network` deve existir: `docker network create kairos_network`
++4. Deploy — o Dockerfile faz o build com as variáveis embutidas automaticamente
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..e5c7259
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,24 @@
++version: "3.9"
++
++services:
++  frontend:
++    build:
++      context: .
++      dockerfile: Dockerfile
++      args:
++        VITE_SHEETS_API_URL: ${VITE_SHEETS_API_URL:-http://187.77.229.227:3335/api/apps/vidracaria}
++        VITE_KAIROS_ADMIN_URL: ${VITE_KAIROS_ADMIN_URL:-}
++        VITE_KAIROS_CLIENT_ID: ${VITE_KAIROS_CLIENT_ID:-}
++        VITE_APP_SLUG: vidra-aria-top
++    restart: unless-stopped
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.vidra-aria-top.rule=Host(`vidracaria.fbautomacao.space`)"
++      - "traefik.http.routers.vidra-aria-top.tls.certresolver=letsencrypt"
++      - "traefik.http.services.vidra-aria-top.loadbalancer.server.port=80"
++
++networks:
++  kairos_network:
++    external: true
+diff --git a/src/api.ts b/src/api.ts
+index 7714c1a..8920074 100644
+--- a/src/api.ts
++++ b/src/api.ts
+@@ -1,4 +1,4 @@
+-const API_URL = 'http://187.77.229.227:3335/api/apps/vidracaria';
++const API_URL = (import.meta.env.VITE_SHEETS_API_URL || 'http://187.77.229.227:3335/api/apps/vidracaria').replace(/\/$/, '');
+ 
+ export async function fetchData(sheet: string): Promise<any[]> {
+   try {
+diff --git a/src/components/LicenseGate.tsx b/src/components/LicenseGate.tsx
+new file mode 100644
+index 0000000..7a5beb6
+--- /dev/null
++++ b/src/components/LicenseGate.tsx
+@@ -0,0 +1,45 @@
++import { useEffect, useState, ReactNode } from 'react';
++
++const ADMIN_URL = import.meta.env.VITE_KAIROS_ADMIN_URL?.replace(/\/$/, '') || '';
++const CLIENT_ID = import.meta.env.VITE_KAIROS_CLIENT_ID || '';
++const APP_SLUG = import.meta.env.VITE_APP_SLUG || 'vidra-aria-top';
++
++export default function LicenseGate({ children }: { children: ReactNode }) {
++  const [status, setStatus] = useState<'checking' | 'ok' | 'blocked'>('checking');
++
++  useEffect(() => {
++    if (!ADMIN_URL || !CLIENT_ID) {
++      setStatus('ok');
++      return;
++    }
++    fetch(`${ADMIN_URL}/api/license/verify?client_id=${CLIENT_ID}&app_slug=${APP_SLUG}`)
++      .then(r => r.json())
++      .then(data => setStatus(data.active === false ? 'blocked' : 'ok'))
++      .catch(() => setStatus('ok')); // fail-open
++  }, []);
++
++  if (status === 'checking') {
++    return (
++      <div className="min-h-screen flex items-center justify-center bg-gray-950">
++        <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent" />
++      </div>
++    );
++  }
++
++  if (status === 'blocked') {
++    return (
++      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white p-8">
++        <div className="text-center max-w-md">
++          <div className="text-5xl mb-4">🔒</div>
++          <h1 className="text-2xl font-bold mb-2">Acesso Suspenso</h1>
++          <p className="text-gray-400">
++            A licença deste aplicativo está suspensa ou expirada.
++            Entre em contato com o administrador para regularizar.
++          </p>
++        </div>
++      </div>
++    );
++  }
++
++  return <>{children}</>;
++}
+diff --git a/src/main.tsx b/src/main.tsx
+index 76c7172..70bb6d5 100644
+--- a/src/main.tsx
++++ b/src/main.tsx
+@@ -1,10 +1,13 @@
+ import {StrictMode} from 'react';
+ import {createRoot} from 'react-dom/client';
+ import App from './App.tsx';
++import LicenseGate from './components/LicenseGate.tsx';
+ import './index.css';
+ 
+ createRoot(document.getElementById('root')!).render(
+   <StrictMode>
+-    <App />
++    <LicenseGate>
++      <App />
++    </LicenseGate>
+   </StrictMode>,
+ );
+-- 
+2.43.0
+
