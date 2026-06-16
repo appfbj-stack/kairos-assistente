@@ -1,0 +1,121 @@
+From eefd1953de058cb539a72cc4f313aa464191525e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 22:32:54 +0000
+Subject: [PATCH] feat: suporte a membros cadastrados diretamente na Sede
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adiciona congregação especial "Sede" (tipo='sede') para membros que
+pertencem à sede administrativa e não a uma congregação filha. A Sede
+funciona como qualquer congregação no fluxo de cadastro/QR Code, mas
+não pode ser removida e é excluída da contagem de "congregações" no
+dashboard.
+---
+ backend/src/db/schema.js                       | 18 ++++++++++++++++++
+ backend/src/routes/congregacoes.js             |  1 +
+ backend/src/routes/dashboard.js                |  2 +-
+ .../src/pages/congregacoes/Congregacoes.jsx    | 15 +++++++++++----
+ 4 files changed, 31 insertions(+), 5 deletions(-)
+
+diff --git a/backend/src/db/schema.js b/backend/src/db/schema.js
+index 1c6c343..f7d5470 100644
+--- a/backend/src/db/schema.js
++++ b/backend/src/db/schema.js
+@@ -41,6 +41,7 @@ function initDb() {
+       whatsapp TEXT,
+       email TEXT,
+       status TEXT NOT NULL DEFAULT 'ativa',
++      tipo TEXT NOT NULL DEFAULT 'congregacao',
+       criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+       atualizado_em TEXT NOT NULL DEFAULT (datetime('now'))
+     );
+@@ -187,6 +188,12 @@ function initDb() {
+     CREATE INDEX IF NOT EXISTS idx_auditoria_tabela ON auditoria(tabela, registro_id);
+   `);
+ 
++  // Migração: adiciona coluna 'tipo' em bancos criados antes dela existir
++  const colunas = db.prepare("PRAGMA table_info(congregacoes)").all();
++  if (!colunas.some(c => c.name === 'tipo')) {
++    db.exec("ALTER TABLE congregacoes ADD COLUMN tipo TEXT NOT NULL DEFAULT 'congregacao'");
++  }
++
+   // Seed: admin padrão
+   const adminExiste = db.prepare('SELECT id FROM usuarios WHERE perfil = ?').get('sede');
+   if (!adminExiste) {
+@@ -199,6 +206,17 @@ function initDb() {
+     console.log(`[DB] Admin criado: ${adminEmail}`);
+   }
+ 
++  // Seed: congregação "Sede" — membros cadastrados diretamente na sede (não em uma congregação filha)
++  const sedeExiste = db.prepare("SELECT id FROM congregacoes WHERE tipo = 'sede'").get();
++  if (!sedeExiste) {
++    const { v4: uuidv4 } = require('uuid');
++    db.prepare(`
++      INSERT INTO congregacoes (id, nome, status, tipo)
++      VALUES (?, 'Sede', 'ativa', 'sede')
++    `).run(uuidv4());
++    console.log('[DB] Congregação "Sede" criada');
++  }
++
+   console.log('[DB] Banco inicializado com sucesso');
+   return db;
+ }
+diff --git a/backend/src/routes/congregacoes.js b/backend/src/routes/congregacoes.js
+index bd99042..3599346 100644
+--- a/backend/src/routes/congregacoes.js
++++ b/backend/src/routes/congregacoes.js
+@@ -59,6 +59,7 @@ router.delete('/:id', autorizar('sede'), (req, res) => {
+   const db = getDb();
+   const antes = db.prepare('SELECT * FROM congregacoes WHERE id = ?').get(req.params.id);
+   if (!antes) return res.status(404).json({ erro: 'Não encontrada' });
++  if (antes.tipo === 'sede') return res.status(400).json({ erro: 'A congregação Sede não pode ser removida' });
+   db.prepare('DELETE FROM congregacoes WHERE id = ?').run(req.params.id);
+   enfileirar('congregacoes', 'delete', { id: req.params.id });
+   registrarAuditoria(req.usuario.id, 'delete', 'congregacoes', req.params.id, antes, null, req.ip);
+diff --git a/backend/src/routes/dashboard.js b/backend/src/routes/dashboard.js
+index a57c7df..d676867 100644
+--- a/backend/src/routes/dashboard.js
++++ b/backend/src/routes/dashboard.js
+@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
+   const dd = String(hoje.getDate()).padStart(2, '0');
+ 
+   const stats = {
+-    congregacoes: isSede ? db.prepare('SELECT COUNT(*) as c FROM congregacoes WHERE status = "ativa"').get().c : 1,
++    congregacoes: isSede ? db.prepare("SELECT COUNT(*) as c FROM congregacoes WHERE status = 'ativa' AND tipo != 'sede'").get().c : 1,
+     total_membros: db.prepare(`SELECT COUNT(*) as c FROM membros ${where}`).get().c,
+     membros_ativos: db.prepare(`SELECT COUNT(*) as c FROM membros WHERE status = 'ativo'${congId ? ` AND congregacao_id = '${congId}'` : ''}`).get().c,
+     membros_inativos: db.prepare(`SELECT COUNT(*) as c FROM membros WHERE status = 'inativo'${congId ? ` AND congregacao_id = '${congId}'` : ''}`).get().c,
+diff --git a/frontend/src/pages/congregacoes/Congregacoes.jsx b/frontend/src/pages/congregacoes/Congregacoes.jsx
+index 7d21f01..1c406c4 100644
+--- a/frontend/src/pages/congregacoes/Congregacoes.jsx
++++ b/frontend/src/pages/congregacoes/Congregacoes.jsx
+@@ -135,14 +135,21 @@ export default function Congregacoes() {
+                   </div>
+                   <div>
+                     <h3 className="font-semibold text-gray-900">{c.nome}</h3>
+-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'ativa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+-                      {c.status === 'ativa' ? 'Ativa' : 'Inativa'}
+-                    </span>
++                    <div className="flex gap-1.5 mt-0.5">
++                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'ativa' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
++                        {c.status === 'ativa' ? 'Ativa' : 'Inativa'}
++                      </span>
++                      {c.tipo === 'sede' && (
++                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">Sede</span>
++                      )}
++                    </div>
+                   </div>
+                 </div>
+                 <div className="flex gap-1">
+                   <button onClick={() => setModal(c)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit size={15} /></button>
+-                  <button onClick={() => { if (confirm('Remover congregação?')) deletar.mutate(c.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
++                  {c.tipo !== 'sede' && (
++                    <button onClick={() => { if (confirm('Remover congregação?')) deletar.mutate(c.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
++                  )}
+                 </div>
+               </div>
+               <div className="space-y-1.5 text-sm text-gray-500">
+-- 
+2.43.0
+
