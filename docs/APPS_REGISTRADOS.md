@@ -6,9 +6,9 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 
 ## Apps Ativos
 
-| App | Slug | Tipo | Porta Frontend | Porta Backend | Status |
-|---|---|---|---|---|---|
-| FotoAgenda Pro | `fotoagenda` | Pro | 3015 | 8005 | ✅ Ativo |
+| App | Slug | Tipo | Porta Frontend | Porta Backend | Repositório | Status |
+|---|---|---|---|---|---|---|
+| FotoAgenda Pro | `foto-agenda-pro` | Pro | 3015 | 8005 | [foto-agenda-v1](https://github.com/appfbj-stack/foto-agenda-v1) | ✅ Ativo |
 
 ---
 
@@ -19,8 +19,8 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Kairos Admin Frontend | 3008 |
 | Kairos Admin Backend | 3010 |
 | PostgreSQL (Kairos) | 5432 |
-| FotoAgenda Frontend | 3015 |
-| FotoAgenda Backend | 8005 |
+| FotoAgenda Pro Frontend | 3015 |
+| FotoAgenda Pro Backend | 8005 |
 
 ### Faixa livre para novos apps
 - **Frontend**: 3020, 3025, 3030, 3035, 3040...

@@ -1,0 +1,419 @@
+From c2b1707ea238aecac7a0b915215474c3b487d4c3 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 18:34:41 +0000
+Subject: [PATCH] feat: integrate Kairos Admin license verification (Kairos Pro
+ standard)
+
+- Add backend/app/services/license.py: async license check (fail-open)
+- Add backend/app/routes/license_check.py: public /api/license/verify
+- Update config.py: KAIROS_ADMIN_URL, KAIROS_CLIENT_ID, APP_SLUG
+- Update auth.py: call check_tenant_license on login (async)
+- Update main.py: register license_check router, version 2.0.0
+- Add docker-compose.yml: PostgreSQL 16 + backend, kairos_network
+- Update .env.example: document Kairos Admin variables
+- Update README.md: Kairos Pro standards, deploy, API contract
+---
+ .env.example                        |  12 ++-
+ README.md                           | 118 +++++++++++++++++++++++++---
+ backend/app/core/config.py          |   5 ++
+ backend/app/main.py                 |   5 +-
+ backend/app/routes/auth.py          |   8 +-
+ backend/app/routes/license_check.py |  24 ++++++
+ backend/app/services/__init__.py    |   0
+ backend/app/services/license.py     |  56 +++++++++++++
+ docker-compose.yml                  |  53 +++++++++++++
+ 9 files changed, 263 insertions(+), 18 deletions(-)
+ create mode 100644 backend/app/routes/license_check.py
+ create mode 100644 backend/app/services/__init__.py
+ create mode 100644 backend/app/services/license.py
+ create mode 100644 docker-compose.yml
+
+diff --git a/.env.example b/.env.example
+index 1002be4..1539f74 100644
+--- a/.env.example
++++ b/.env.example
+@@ -3,9 +3,19 @@
+ # Só preencha VITE_API_URL se quiser apontar diretamente para outro backend.
+ VITE_API_URL=
+ 
+-# Backend — configurar no Coolify como env vars
++# Backend — configurar no Dokploy / Docker como env vars
+ DATABASE_URL=postgresql://user:pass@host:5432/fotoagenda
+ SECRET_KEY=troque-por-chave-aleatoria-longa
+ HERMES_API_URL=https://api.meuchat.fbautomacao.space
+ HERMES_EMAIL=hermesadmin@fbautomacao.space
+ HERMES_PASSWORD=HermesAdmin@2026#Segura
++
++# Kairos Admin — integração de licença
++# Obtenha o KAIROS_CLIENT_ID registrando este app no painel Kairos Admin
++KAIROS_ADMIN_URL=https://admin.fbautomacao.space
++KAIROS_CLIENT_ID=
++APP_SLUG=foto-agenda-pro
++
++# Super Admin seed (opcional — cria usuário super_admin no primeiro boot)
++ADMIN_EMAIL=
++ADMIN_PASSWORD=
+diff --git a/README.md b/README.md
+index 72193b8..d24d4aa 100644
+--- a/README.md
++++ b/README.md
+@@ -1,20 +1,112 @@
+-<div align="center">
+-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+-</div>
++# FotoAgenda Pro
+ 
+-# Run and deploy your AI Studio app
++Agenda e gestão para fotógrafos profissionais — agendamento de sessões, controle de clientes, finanças e assistente IA (Hermes).
+ 
+-This contains everything you need to run your app locally.
++Parte do ecossistema **Kairos Pro** — requer Kairos Admin para gerenciamento de licenças.
+ 
+-View your app in AI Studio: https://ai.studio/apps/96f3f3cd-87f0-481a-b4ad-45c38e39405d
++---
+ 
+-## Run Locally
++## Stack
+ 
+-**Prerequisites:**  Node.js
++| Camada | Tecnologia |
++|--------|-----------|
++| Frontend | React 18 + Vite + TypeScript |
++| Backend | FastAPI + SQLAlchemy |
++| Banco | PostgreSQL 16 |
++| Auth | JWT (python-jose) |
++| Deploy | Docker Compose + Traefik (Dokploy) |
+ 
++---
+ 
+-1. Install dependencies:
+-   `npm install`
+-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+-3. Run the app:
+-   `npm run dev`
++## Funcionalidades
++
++- **Agenda** — cadastro de sessões com data, horário, local, maquiador, cabeleireiro
++- **Clientes** — CRUD completo com busca
++- **Financeiro** — preço, sinal, status de pagamento por sessão
++- **Hermes IA** — assistente integrado com planos de uso (teste / básico / pro / ilimitado)
++- **Multi-tenant** — cada estúdio é um tenant isolado
++- **Super Admin** — painel em `/painel` para gerenciar tenants e módulos
++- **Kairos Admin** — verificação de licença a cada login
++
++---
++
++## Configuração local
++
++```bash
++# 1. Clone
++git clone https://github.com/appfbj-stack/foto-agenda-v1.git
++cd foto-agenda-v1
++
++# 2. Crie o .env a partir do exemplo
++cp .env.example .env
++# Edite .env com suas credenciais
++
++# 3. Suba o banco e o backend
++docker compose up -d
++
++# 4. Frontend (desenvolvimento)
++npm install
++npm run dev
++```
++
++---
++
++## Variáveis de ambiente
++
++| Variável | Descrição |
++|----------|-----------|
++| `DATABASE_URL` | URL PostgreSQL |
++| `SECRET_KEY` | Chave secreta JWT |
++| `HERMES_API_URL` | URL do serviço Hermes IA |
++| `HERMES_EMAIL` | Credencial Hermes |
++| `HERMES_PASSWORD` | Credencial Hermes |
++| `KAIROS_ADMIN_URL` | URL do Kairos Admin (ex: `https://admin.fbautomacao.space`) |
++| `KAIROS_CLIENT_ID` | UUID do app registrado no Kairos Admin |
++| `APP_SLUG` | `foto-agenda-pro` (fixo) |
++| `ADMIN_EMAIL` | E-mail do super admin (seed automático no boot) |
++| `ADMIN_PASSWORD` | Senha do super admin |
++
++---
++
++## Integração Kairos Admin
++
++Este app implementa o contrato padrão Kairos Pro:
++
++**Endpoint público** (chamado pelo Kairos Admin para health check):
++```
++GET /api/license/verify?client_id={UUID}&app_slug=foto-agenda-pro
++→ { "app": "FotoAgenda Pro", "slug": "foto-agenda-pro", "client_id": "...", "online": true }
++```
++
++**Verificação no login** — a cada login de usuário não-super-admin, o sistema consulta o Kairos Admin para validar se a licença está ativa. Se o Kairos Admin estiver indisponível, a autenticação prossegue normalmente (fail-open).
++
++---
++
++## Deploy no Dokploy
++
++1. Crie um serviço **Docker Compose** no Dokploy apontando para este repositório
++2. Configure as variáveis de ambiente na interface do Dokploy
++3. Certifique-se de que a rede `kairos_network` existe: `docker network create kairos_network`
++4. Registre o app no Kairos Admin e copie o `KAIROS_CLIENT_ID`
++
++---
++
++## Estrutura do projeto
++
++```
++foto-agenda-v1/
++├── backend/
++│   ├── app/
++│   │   ├── core/          # database, security, config
++│   │   ├── models.py      # SQLAlchemy models
++│   │   ├── deps.py        # FastAPI dependencies
++│   │   ├── routes/        # auth, admin, shoots, hermes, panel, license_check
++│   │   └── services/      # license.py (Kairos Admin integration)
++│   ├── Dockerfile
++│   └── requirements.txt
++├── services/              # Frontend API client
++├── components/            # React components
++├── App.tsx
++├── docker-compose.yml
++└── .env.example
++```
+diff --git a/backend/app/core/config.py b/backend/app/core/config.py
+index 9f47ae6..4f0c54c 100644
+--- a/backend/app/core/config.py
++++ b/backend/app/core/config.py
+@@ -9,6 +9,11 @@ class Settings(BaseSettings):
+     HERMES_EMAIL: str = ""
+     HERMES_PASSWORD: str = ""
+ 
++    # Kairos Admin integration
++    KAIROS_ADMIN_URL: str = ""        # e.g. https://admin.fbautomacao.space
++    KAIROS_CLIENT_ID: str = ""        # UUID assigned in Kairos Admin
++    APP_SLUG: str = "foto-agenda-pro" # must match slug registered in Kairos Admin
++
+     class Config:
+         env_file = ".env"
+ 
+diff --git a/backend/app/main.py b/backend/app/main.py
+index ba6dcd9..19a479c 100644
+--- a/backend/app/main.py
++++ b/backend/app/main.py
+@@ -47,9 +47,9 @@ async def lifespan(app: FastAPI):
+     yield
+ 
+ 
+-from app.routes import auth, admin, shoots, hermes, panel
++from app.routes import auth, admin, shoots, hermes, panel, license_check
+ 
+-app = FastAPI(title="FotoAgenda API", version="1.0.0", lifespan=lifespan)
++app = FastAPI(title="FotoAgenda Pro API", version="2.0.0", lifespan=lifespan)
+ 
+ app.add_middleware(
+     CORSMiddleware,
+@@ -69,6 +69,7 @@ app.include_router(admin.router)
+ app.include_router(shoots.router)
+ app.include_router(hermes.router)
+ app.include_router(panel.router)
++app.include_router(license_check.router)
+ 
+ 
+ @app.get("/health")
+diff --git a/backend/app/routes/auth.py b/backend/app/routes/auth.py
+index 3d2bf9b..40d3dd2 100644
+--- a/backend/app/routes/auth.py
++++ b/backend/app/routes/auth.py
+@@ -6,6 +6,7 @@ from app.core.database import get_db
+ from app.core.security import hash_password, verify_password, create_access_token
+ from app.deps import get_current_user
+ from app.models import MODULES, Tenant, TenantModule, User
++from app.services.license import check_tenant_license
+ 
+ router = APIRouter(prefix="/auth", tags=["auth"])
+ 
+@@ -53,12 +54,12 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
+     return TokenOut(access_token=token)
+ 
+ @router.post("/login", response_model=TokenOut)
+-def login(payload: LoginIn, db: Session = Depends(get_db)):
++async def login(payload: LoginIn, db: Session = Depends(get_db)):
+     user = db.query(User).filter(User.email == payload.email, User.active.is_(True)).first()
+     if not user or not verify_password(payload.password, user.password_hash):
+         raise HTTPException(status_code=401, detail="Email ou senha inválidos")
+ 
+-    # Verifica se o tenant está ativo (bloqueio por inadimplência)
++    # Verifica se o tenant está ativo (bloqueio por inadimplência local)
+     if user.role != "super_admin":
+         tenant = db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
+         if not tenant or not tenant.active:
+@@ -67,6 +68,9 @@ def login(payload: LoginIn, db: Session = Depends(get_db)):
+                 detail="Conta suspensa. Entre em contato com o suporte."
+             )
+ 
++        # Verifica licença no Kairos Admin (falha aberta se Admin indisponível)
++        await check_tenant_license(tenant.slug)
++
+     return TokenOut(access_token=create_access_token({"sub": str(user.id)}))
+ 
+ @router.get("/me", response_model=UserOut)
+diff --git a/backend/app/routes/license_check.py b/backend/app/routes/license_check.py
+new file mode 100644
+index 0000000..5385d0b
+--- /dev/null
++++ b/backend/app/routes/license_check.py
+@@ -0,0 +1,24 @@
++"""
++Public endpoint that Kairos Admin uses to verify this app is online
++and to confirm the license is being enforced.
++
++Contract: GET /api/license/verify?client_id={UUID}&app_slug={slug}
++Response: { "app": str, "slug": str, "client_id": str, "online": true }
++"""
++from fastapi import APIRouter, Query
++from app.core.config import settings
++
++router = APIRouter(prefix="/api/license", tags=["license"])
++
++
++@router.get("/verify")
++def license_verify(
++    client_id: str = Query(...),
++    app_slug: str = Query(...),
++):
++    return {
++        "app": "FotoAgenda Pro",
++        "slug": settings.APP_SLUG,
++        "client_id": client_id,
++        "online": True,
++    }
+diff --git a/backend/app/services/__init__.py b/backend/app/services/__init__.py
+new file mode 100644
+index 0000000..e69de29
+diff --git a/backend/app/services/license.py b/backend/app/services/license.py
+new file mode 100644
+index 0000000..693a326
+--- /dev/null
++++ b/backend/app/services/license.py
+@@ -0,0 +1,56 @@
++"""
++Kairos Admin license verification service.
++
++Calls the Kairos Admin API to check whether the tenant's license
++is active for this app. If KAIROS_ADMIN_URL or KAIROS_CLIENT_ID
++are not configured, the check is skipped (allows local dev without
++Kairos Admin running).
++"""
++import httpx
++from app.core.config import settings
++
++
++async def verify_license(client_id: str) -> dict:
++    """
++    Returns {"active": bool, "plan": str, "blocked": bool}.
++    On any error or missing config, returns active=True so the app
++    degrades gracefully when Kairos Admin is unreachable.
++    """
++    if not settings.KAIROS_ADMIN_URL or not settings.KAIROS_CLIENT_ID:
++        return {"active": True, "plan": "unknown", "blocked": False}
++
++    url = (
++        f"{settings.KAIROS_ADMIN_URL.rstrip('/')}"
++        f"/api/license/verify"
++        f"?client_id={client_id}&app_slug={settings.APP_SLUG}"
++    )
++    try:
++        async with httpx.AsyncClient(timeout=5.0) as client:
++            resp = await client.get(url)
++            if resp.status_code == 200:
++                data = resp.json()
++                return {
++                    "active": data.get("active", True),
++                    "plan": data.get("plan", "unknown"),
++                    "blocked": not data.get("active", True),
++                }
++    except Exception:
++        pass
++
++    # Kairos Admin unreachable — fail open
++    return {"active": True, "plan": "unknown", "blocked": False}
++
++
++async def check_tenant_license(tenant_slug: str) -> None:
++    """
++    Raises HTTPException 403 if the Kairos Admin license is blocked.
++    Uses the tenant slug as client_id for the license lookup.
++    """
++    from fastapi import HTTPException
++
++    result = await verify_license(tenant_slug)
++    if result.get("blocked"):
++        raise HTTPException(
++            status_code=403,
++            detail="Licença expirada ou suspensa. Entre em contato com o administrador.",
++        )
+diff --git a/docker-compose.yml b/docker-compose.yml
+new file mode 100644
+index 0000000..b53d3ce
+--- /dev/null
++++ b/docker-compose.yml
+@@ -0,0 +1,53 @@
++version: "3.9"
++
++services:
++  postgres:
++    image: postgres:16-alpine
++    restart: unless-stopped
++    environment:
++      POSTGRES_DB: fotoagenda
++      POSTGRES_USER: fotoagenda
++      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fotoagenda_secret}
++    volumes:
++      - postgres_data:/var/lib/postgresql/data
++    healthcheck:
++      test: ["CMD-SHELL", "pg_isready -U fotoagenda -d fotoagenda"]
++      interval: 5s
++      timeout: 5s
++      retries: 10
++    networks:
++      - kairos_network
++
++  backend:
++    build:
++      context: ./backend
++      dockerfile: Dockerfile
++    restart: unless-stopped
++    depends_on:
++      postgres:
++        condition: service_healthy
++    environment:
++      DATABASE_URL: postgresql://fotoagenda:${POSTGRES_PASSWORD:-fotoagenda_secret}@postgres:5432/fotoagenda
++      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
++      HERMES_API_URL: ${HERMES_API_URL:-}
++      HERMES_EMAIL: ${HERMES_EMAIL:-}
++      HERMES_PASSWORD: ${HERMES_PASSWORD:-}
++      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL:-}
++      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
++      APP_SLUG: foto-agenda-pro
++      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
++      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.foto-agenda-api.rule=Host(`api.fotografia.fbautomacao.space`)"
++      - "traefik.http.routers.foto-agenda-api.tls.certresolver=letsencrypt"
++      - "traefik.http.services.foto-agenda-api.loadbalancer.server.port=8000"
++
++volumes:
++  postgres_data:
++
++networks:
++  kairos_network:
++    external: true
+-- 
+2.43.0
+
