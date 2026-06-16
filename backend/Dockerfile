@@ -3,5 +3,5 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
-EXPOSE 3001
+EXPOSE 3010
 CMD ["./node_modules/.bin/tsx", "src/main.ts"]
