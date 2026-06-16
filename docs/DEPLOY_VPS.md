@@ -125,10 +125,9 @@ KAIROS_CLIENT_ID=<copiado do passo 2>
 ADMIN_EMAIL=admin@fotoagenda.com
 ADMIN_PASSWORD=<defina uma senha forte>
 ```
-> O `docker-compose.yml` deste app só tem rota Traefik para o **backend**
-> (`api.fotografia.fbautomacao.space`). Adicione um serviço/rota de frontend
-> com `Host(\`fotografia.fbautomacao.space\`)` antes do deploy, ou aponte o
-> domínio do frontend para onde ele já está hospedado hoje.
+> Aplique também `patches/foto-agenda-v1-frontend-compose.patch` — o
+> `docker-compose.yml` original só buildava o backend; o serviço de
+> frontend (`fotografia.fbautomacao.space`) estava faltando.
 
 ### Sede Sorocaba (`sede-sorocaba`)
 ```env

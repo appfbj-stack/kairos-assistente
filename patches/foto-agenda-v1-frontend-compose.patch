@@ -1,0 +1,48 @@
+From 190a26fca0e1ad2b22847dd8c8ad0c9ff518ce90 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 23:01:53 +0000
+Subject: [PATCH] =?UTF-8?q?fix:=20adiciona=20servi=C3=A7o=20de=20frontend?=
+ =?UTF-8?q?=20ao=20docker-compose=20(estava=20faltando)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+O Dockerfile do frontend (Vite + nginx) já existia na raiz do projeto,
+mas o docker-compose.yml só buildava o backend. Sem o serviço de
+frontend e a rota Traefik para fotografia.fbautomacao.space, o app não
+tinha como ser acessado publicamente via Dokploy.
+---
+ docker-compose.yml | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/docker-compose.yml b/docker-compose.yml
+index b53d3ce..b132de6 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -45,6 +45,23 @@ services:
+       - "traefik.http.routers.foto-agenda-api.tls.certresolver=letsencrypt"
+       - "traefik.http.services.foto-agenda-api.loadbalancer.server.port=8000"
+ 
++  frontend:
++    build:
++      context: .
++      dockerfile: Dockerfile
++      args:
++        - VITE_API_URL=https://api.fotografia.fbautomacao.space
++    restart: unless-stopped
++    depends_on:
++      - backend
++    networks:
++      - kairos_network
++    labels:
++      - "traefik.enable=true"
++      - "traefik.http.routers.foto-agenda.rule=Host(`fotografia.fbautomacao.space`)"
++      - "traefik.http.routers.foto-agenda.tls.certresolver=letsencrypt"
++      - "traefik.http.services.foto-agenda.loadbalancer.server.port=80"
++
+ volumes:
+   postgres_data:
+ 
+-- 
+2.43.0
+
