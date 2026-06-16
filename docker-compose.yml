@@ -32,6 +32,8 @@ services:
       # Protege toda a API exceto /api/license/verify (consultado sem credencial pelos apps satélites)
       - BASIC_AUTH_USER=${BASIC_AUTH_USER}
       - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+    ports:
+      - "3010:3010"
     volumes:
       - kairos_data:/app/data
     depends_on:
@@ -51,6 +53,8 @@ services:
       # Protege o painel com a mesma senha da API (checado em middleware.ts)
       - BASIC_AUTH_USER=${BASIC_AUTH_USER}
       - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+    ports:
+      - "3008:3000"
     depends_on:
       - backend
     restart: unless-stopped
