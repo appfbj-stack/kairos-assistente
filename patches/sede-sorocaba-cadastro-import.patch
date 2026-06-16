@@ -1,0 +1,747 @@
+From 4c7ce4714b1ad19e2822e3a3eed3af64746fde4d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 16 Jun 2026 20:30:41 +0000
+Subject: [PATCH] feat: add bulk import improvements, public self-registration
+ form and pending member approval
+
+---
+ backend/src/routes/cadastro.js                |  66 ++++
+ backend/src/routes/membros.js                 |   9 +
+ backend/src/server.js                         |   1 +
+ frontend/src/App.jsx                          |   2 +
+ .../src/pages/cadastro/CadastroPublico.jsx    | 168 +++++++++++
+ .../src/pages/congregacoes/Congregacoes.jsx   |  56 +++-
+ frontend/src/pages/membros/Membros.jsx        | 281 +++++++++++-------
+ 7 files changed, 474 insertions(+), 109 deletions(-)
+ create mode 100644 backend/src/routes/cadastro.js
+ create mode 100644 frontend/src/pages/cadastro/CadastroPublico.jsx
+
+diff --git a/backend/src/routes/cadastro.js b/backend/src/routes/cadastro.js
+new file mode 100644
+index 0000000..99e07a1
+--- /dev/null
++++ b/backend/src/routes/cadastro.js
+@@ -0,0 +1,66 @@
++const express = require('express');
++const { v4: uuidv4 } = require('uuid');
++const { getDb } = require('../db/schema');
++
++const router = express.Router();
++
++// Returns congregation public info (no auth)
++router.get('/:slug', (req, res) => {
++  const db = getDb();
++  const cong = db.prepare("SELECT id, nome, cidade, estado FROM congregacoes WHERE id = ? OR nome = ? AND status = 'ativa'")
++    .get(req.params.slug, req.params.slug);
++  if (!cong) return res.status(404).json({ erro: 'Congregação não encontrada' });
++  res.json(cong);
++});
++
++// Public self-registration (no auth) — creates member with status='pendente'
++router.post('/:slug', (req, res) => {
++  const db = getDb();
++  const cong = db.prepare("SELECT id, nome FROM congregacoes WHERE id = ? AND status = 'ativa'")
++    .get(req.params.slug);
++  if (!cong) return res.status(404).json({ erro: 'Congregação não encontrada ou inativa' });
++
++  const { nome, telefone, whatsapp, email, cpf, data_nascimento, endereco, estado_civil, cargo, observacoes } = req.body;
++  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome obrigatório' });
++
++  // Check duplicate by CPF or name
++  if (cpf) {
++    const cpfLimpo = cpf.replace(/\D/g, '');
++    const existe = db.prepare("SELECT id FROM membros WHERE REPLACE(REPLACE(cpf,'.',''),'-','') = ? AND congregacao_id = ?").get(cpfLimpo, cong.id);
++    if (existe) return res.status(409).json({ erro: 'CPF já cadastrado nesta congregação' });
++  }
++
++  const id = uuidv4();
++  const agora = new Date().toISOString();
++  db.prepare(`INSERT INTO membros (id, congregacao_id, nome, telefone, whatsapp, email, cpf, data_nascimento, endereco, estado_civil, cargo, observacoes, status, criado_em, atualizado_em)
++    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`)
++    .run(id, cong.id, nome.trim(), telefone||null, whatsapp||null, email||null, cpf||null, data_nascimento||null, endereco||null, estado_civil||null, cargo||null, observacoes||null, agora, agora);
++
++  res.status(201).json({ ok: true, id, congregacao: cong.nome });
++});
++
++// Approve pending member (auth required — added inline)
++router.post('/:congregacao_id/aprovar/:id', (req, res) => {
++  const { autenticar } = require('../middleware/auth');
++  autenticar(req, res, () => {
++    const db = getDb();
++    const m = db.prepare("SELECT * FROM membros WHERE id = ? AND status = 'pendente'").get(req.params.id);
++    if (!m) return res.status(404).json({ erro: 'Membro pendente não encontrado' });
++    db.prepare("UPDATE membros SET status = 'ativo', atualizado_em = ? WHERE id = ?").run(new Date().toISOString(), req.params.id);
++    res.json({ ok: true });
++  });
++});
++
++// Reject pending member
++router.delete('/:congregacao_id/rejeitar/:id', (req, res) => {
++  const { autenticar } = require('../middleware/auth');
++  autenticar(req, res, () => {
++    const db = getDb();
++    const m = db.prepare("SELECT * FROM membros WHERE id = ? AND status = 'pendente'").get(req.params.id);
++    if (!m) return res.status(404).json({ erro: 'Não encontrado' });
++    db.prepare("DELETE FROM membros WHERE id = ?").run(req.params.id);
++    res.json({ ok: true });
++  });
++});
++
++module.exports = router;
+diff --git a/backend/src/routes/membros.js b/backend/src/routes/membros.js
+index a10b8f6..96b1128 100644
+--- a/backend/src/routes/membros.js
++++ b/backend/src/routes/membros.js
+@@ -56,6 +56,15 @@ router.get('/aniversariantes', (req, res) => {
+   res.json(membros);
+ });
+ 
++// List pending members (admin approval queue)
++router.get('/pendentes', (req, res) => {
++  const db = getDb();
++  const filtro = req.congregacaoFiltro ? 'AND congregacao_id = ?' : '';
++  const params = req.congregacaoFiltro ? [req.congregacaoFiltro] : [];
++  const pendentes = db.prepare(`SELECT m.*, c.nome as congregacao_nome FROM membros m LEFT JOIN congregacoes c ON c.id = m.congregacao_id WHERE m.status = 'pendente' ${filtro} ORDER BY m.criado_em DESC`).all(...params);
++  res.json(pendentes);
++});
++
+ router.get('/:id', (req, res) => {
+   const db = getDb();
+   const m = db.prepare('SELECT * FROM membros WHERE id = ?').get(req.params.id);
+diff --git a/backend/src/server.js b/backend/src/server.js
+index f5b833f..24f15ad 100644
+--- a/backend/src/server.js
++++ b/backend/src/server.js
+@@ -28,6 +28,7 @@ app.use('/api/importacao', require('./routes/importacao'));
+ app.use('/api/carteirinhas', require('./routes/carteirinhas'));
+ app.use('/api/batismos', require('./routes/batismos'));
+ app.use('/api/documentos', require('./routes/documentos'));
++app.use('/api/cadastro', require('./routes/cadastro'));
+ app.use('/api/license', require('./routes/licenseCheck'));
+ 
+ // Health check
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 7888046..e7aa193 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -15,6 +15,7 @@ import Documentos from './pages/documentos/Documentos';
+ import Carteirinhas from './pages/carteirinhas/Carteirinhas';
+ import Importacao from './pages/importacao/Importacao';
+ import AssistenteIA from './pages/ia/AssistenteIA';
++import CadastroPublico from './pages/cadastro/CadastroPublico';
+ 
+ const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, retry: 1 } } });
+ 
+@@ -66,6 +67,7 @@ export default function App() {
+           <Route path="/agenda"       element={<RotaProtegida><Agenda /></RotaProtegida>} />
+           <Route path="/importacao"   element={<RotaProtegida><SomentesSede><Importacao /></SomentesSede></RotaProtegida>} />
+           <Route path="/ia"           element={<RotaProtegida><AssistenteIA /></RotaProtegida>} />
++          <Route path="/cadastro/:slug" element={<CadastroPublico />} />
+           <Route path="*"             element={<Navigate to="/dashboard" replace />} />
+         </Routes>
+       </BrowserRouter>
+diff --git a/frontend/src/pages/cadastro/CadastroPublico.jsx b/frontend/src/pages/cadastro/CadastroPublico.jsx
+new file mode 100644
+index 0000000..5e6057a
+--- /dev/null
++++ b/frontend/src/pages/cadastro/CadastroPublico.jsx
+@@ -0,0 +1,168 @@
++import { useState, useEffect } from 'react';
++import { useParams } from 'react-router-dom';
++import axios from 'axios';
++
++const api = axios.create({ baseURL: '/api', timeout: 15000 });
++
++export default function CadastroPublico() {
++  const { slug } = useParams();
++  const [cong, setCong] = useState(null);
++  const [erro, setErro] = useState('');
++  const [enviado, setEnviado] = useState(false);
++  const [enviando, setEnviando] = useState(false);
++  const [form, setForm] = useState({
++    nome: '', telefone: '', whatsapp: '', email: '',
++    cpf: '', data_nascimento: '', endereco: '', estado_civil: '', cargo: '', observacoes: '',
++  });
++
++  useEffect(() => {
++    api.get(`/cadastro/${slug}`)
++      .then(r => setCong(r.data))
++      .catch(() => setErro('Congregação não encontrada ou inativa.'));
++  }, [slug]);
++
++  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
++
++  const enviar = async (e) => {
++    e.preventDefault();
++    if (!form.nome.trim()) { setErro('Nome obrigatório'); return; }
++    setEnviando(true); setErro('');
++    try {
++      await api.post(`/cadastro/${slug}`, form);
++      setEnviado(true);
++    } catch (err) {
++      setErro(err.response?.data?.erro || 'Erro ao enviar. Tente novamente.');
++    } finally {
++      setEnviando(false);
++    }
++  };
++
++  if (erro && !cong) return (
++    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
++      <div className="bg-white rounded-2xl p-8 text-center shadow max-w-sm w-full">
++        <div className="text-5xl mb-4">⚠️</div>
++        <h1 className="text-xl font-bold text-gray-900 mb-2">Link inválido</h1>
++        <p className="text-gray-500 text-sm">{erro}</p>
++      </div>
++    </div>
++  );
++
++  if (!cong) return (
++    <div className="min-h-screen flex items-center justify-center bg-gray-50">
++      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
++    </div>
++  );
++
++  if (enviado) return (
++    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
++      <div className="bg-white rounded-2xl p-8 text-center shadow max-w-sm w-full">
++        <div className="text-6xl mb-4">✅</div>
++        <h1 className="text-2xl font-bold text-gray-900 mb-2">Cadastro enviado!</h1>
++        <p className="text-gray-600 mb-1">Bem-vindo(a) à <strong>{cong.nome}</strong>!</p>
++        <p className="text-gray-400 text-sm">Seus dados foram recebidos e serão confirmados pelo pastor.</p>
++      </div>
++    </div>
++  );
++
++  return (
++    <div className="min-h-screen bg-gray-50 py-8 px-4">
++      <div className="max-w-lg mx-auto">
++        <div className="text-center mb-8">
++          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
++            <span className="text-white text-3xl">⛪</span>
++          </div>
++          <h1 className="text-2xl font-bold text-gray-900">{cong.nome}</h1>
++          <p className="text-gray-500 text-sm mt-1">{cong.cidade}{cong.estado ? ` — ${cong.estado}` : ''}</p>
++          <p className="text-blue-600 text-sm font-medium mt-2">Formulário de Cadastro de Membro</p>
++        </div>
++
++        <form onSubmit={enviar} className="bg-white rounded-2xl shadow p-6 space-y-4">
++          {erro && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{erro}</div>}
++
++          <div>
++            <label className="block text-sm font-medium text-gray-700 mb-1">Nome completo *</label>
++            <input value={form.nome} onChange={e => set('nome', e.target.value)} required
++              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
++              placeholder="Seu nome completo" />
++          </div>
++
++          <div className="grid grid-cols-2 gap-3">
++            <div>
++              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
++              <input type="tel" value={form.telefone} onChange={e => set('telefone', e.target.value)}
++                className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500"
++                placeholder="(00) 00000-0000" />
++            </div>
++            <div>
++              <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
++              <input type="tel" value={form.whatsapp} onChange={e => set('whatsapp', e.target.value)}
++                className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500"
++                placeholder="(00) 00000-0000" />
++            </div>
++          </div>
++
++          <div>
++            <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
++            <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
++              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500"
++              placeholder="seuemail@exemplo.com" />
++          </div>
++
++          <div className="grid grid-cols-2 gap-3">
++            <div>
++              <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
++              <input value={form.cpf} onChange={e => set('cpf', e.target.value)}
++                className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500"
++                placeholder="000.000.000-00" />
++            </div>
++            <div>
++              <label className="block text-sm font-medium text-gray-700 mb-1">Data de nascimento</label>
++              <input type="date" value={form.data_nascimento} onChange={e => set('data_nascimento', e.target.value)}
++                className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500" />
++            </div>
++          </div>
++
++          <div>
++            <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
++            <input value={form.endereco} onChange={e => set('endereco', e.target.value)}
++              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500"
++              placeholder="Rua, número, bairro, cidade" />
++          </div>
++
++          <div className="grid grid-cols-2 gap-3">
++            <div>
++              <label className="block text-sm font-medium text-gray-700 mb-1">Estado civil</label>
++              <select value={form.estado_civil} onChange={e => set('estado_civil', e.target.value)}
++                className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500">
++                <option value="">Selecione</option>
++                {['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União estável'].map(v => <option key={v}>{v}</option>)}
++              </select>
++            </div>
++            <div>
++              <label className="block text-sm font-medium text-gray-700 mb-1">Cargo / função</label>
++              <input value={form.cargo} onChange={e => set('cargo', e.target.value)}
++                className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500"
++                placeholder="Ex: Membro, Diácono..." />
++            </div>
++          </div>
++
++          <div>
++            <label className="block text-sm font-medium text-gray-700 mb-1">Observações</label>
++            <textarea value={form.observacoes} onChange={e => set('observacoes', e.target.value)} rows={2}
++              className="w-full border rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-500 resize-none"
++              placeholder="Informações adicionais (opcional)" />
++          </div>
++
++          <button type="submit" disabled={enviando}
++            className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors">
++            {enviando ? 'Enviando...' : 'Enviar Cadastro'}
++          </button>
++
++          <p className="text-xs text-gray-400 text-center">
++            Seus dados serão usados apenas para fins administrativos da igreja.
++          </p>
++        </form>
++      </div>
++    </div>
++  );
++}
+diff --git a/frontend/src/pages/congregacoes/Congregacoes.jsx b/frontend/src/pages/congregacoes/Congregacoes.jsx
+index 18bfbb4..7d21f01 100644
+--- a/frontend/src/pages/congregacoes/Congregacoes.jsx
++++ b/frontend/src/pages/congregacoes/Congregacoes.jsx
+@@ -1,7 +1,7 @@
+ import { useState } from 'react';
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+ import api from '../../services/api';
+-import { Building2, Plus, Edit, Trash2, Phone, Mail, MapPin } from 'lucide-react';
++import { Building2, Plus, Edit, Trash2, Phone, Mail, MapPin, Link, QrCode, X } from 'lucide-react';
+ 
+ function FormCongregacao({ cong, onFechar }) {
+   const qc = useQueryClient();
+@@ -61,8 +61,33 @@ function FormCongregacao({ cong, onFechar }) {
+   );
+ }
+ 
++function ModalQR({ cong, onFechar }) {
++  const url = `${window.location.origin}/cadastro/${cong.id}`;
++  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
++
++  return (
++    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
++      <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-xl">
++        <div className="flex items-center justify-between mb-4">
++          <h2 className="text-lg font-semibold text-gray-900">QR Code — {cong.nome}</h2>
++          <button onClick={onFechar} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
++        </div>
++        <img src={qrUrl} alt={`QR Code ${cong.nome}`} className="mx-auto mb-4 rounded-lg border p-2" width={200} height={200} />
++        <p className="text-xs text-gray-500 break-all mb-4">{url}</p>
++        <button
++          onClick={() => { navigator.clipboard.writeText(url); }}
++          className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
++          Copiar link
++        </button>
++      </div>
++    </div>
++  );
++}
++
+ export default function Congregacoes() {
+   const [modal, setModal] = useState(null);
++  const [qrAberto, setQrAberto] = useState(null);
++  const [toastMsg, setToastMsg] = useState('');
+   const qc = useQueryClient();
+ 
+   const { data = [], isLoading } = useQuery({
+@@ -75,6 +100,14 @@ export default function Congregacoes() {
+     onSuccess: () => qc.invalidateQueries(['congregacoes']),
+   });
+ 
++  const copiarLink = (cong) => {
++    const url = `${window.location.origin}/cadastro/${cong.id}`;
++    navigator.clipboard.writeText(url).then(() => {
++      setToastMsg(`Link copiado: ${cong.nome}`);
++      setTimeout(() => setToastMsg(''), 3000);
++    });
++  };
++
+   return (
+     <div className="space-y-4">
+       <div className="flex items-center justify-between">
+@@ -117,12 +150,33 @@ export default function Congregacoes() {
+                 {c.telefone && <div className="flex items-center gap-2"><Phone size={13} /> {c.telefone}</div>}
+                 {c.pastor_email && <div className="flex items-center gap-2"><Mail size={13} /> {c.pastor_email}</div>}
+               </div>
++              {c.status === 'ativa' && (
++                <div className="flex gap-2 mt-3 pt-3 border-t">
++                  <button
++                    onClick={() => copiarLink(c)}
++                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
++                    <Link size={12} /> Link de cadastro
++                  </button>
++                  <button
++                    onClick={() => setQrAberto(c)}
++                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 font-medium ml-auto">
++                    <QrCode size={12} /> QR Code
++                  </button>
++                </div>
++              )}
+             </div>
+           ))}
+         </div>
+       )}
+ 
+       {modal !== null && <FormCongregacao cong={modal?.id ? modal : null} onFechar={() => setModal(null)} />}
++      {qrAberto && <ModalQR cong={qrAberto} onFechar={() => setQrAberto(null)} />}
++
++      {toastMsg && (
++        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg z-50">
++          {toastMsg}
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/frontend/src/pages/membros/Membros.jsx b/frontend/src/pages/membros/Membros.jsx
+index efacf7c..e87477e 100644
+--- a/frontend/src/pages/membros/Membros.jsx
++++ b/frontend/src/pages/membros/Membros.jsx
+@@ -2,10 +2,11 @@ import { useState } from 'react';
+ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+ import api from '../../services/api';
+ import { formatarData, calcularIdade, STATUS_MEMBRO } from '../../lib/utils';
+-import { Plus, Search, Filter, ChevronLeft, ChevronRight, Edit, Trash2, User } from 'lucide-react';
++import { Plus, Search, ChevronLeft, ChevronRight, Edit, Trash2, User, CheckCircle, XCircle, Clock } from 'lucide-react';
+ import FormMembro from './FormMembro';
+ 
+ export default function Membros() {
++  const [aba, setAba] = useState('ativos');
+   const [busca, setBusca] = useState('');
+   const [status, setStatus] = useState('');
+   const [page, setPage] = useState(1);
+@@ -17,6 +18,14 @@ export default function Membros() {
+     queryKey: ['membros', busca, status, page],
+     queryFn: () => api.get('/membros', { params: { busca, status, page, limit: 20 } }).then(r => r.data),
+     keepPreviousData: true,
++    enabled: aba === 'ativos',
++  });
++
++  const { data: pendentes, isLoading: loadingPendentes } = useQuery({
++    queryKey: ['membros-pendentes'],
++    queryFn: () => api.get('/membros/pendentes').then(r => r.data),
++    enabled: aba === 'pendentes',
++    refetchInterval: aba === 'pendentes' ? 30000 : false,
+   });
+ 
+   const deletar = useMutation({
+@@ -24,10 +33,19 @@ export default function Membros() {
+     onSuccess: () => qc.invalidateQueries(['membros']),
+   });
+ 
++  const aprovar = useMutation({
++    mutationFn: (m) => api.post(`/cadastro/${m.congregacao_id}/aprovar/${m.id}`),
++    onSuccess: () => { qc.invalidateQueries(['membros-pendentes']); qc.invalidateQueries(['membros']); },
++  });
++
++  const rejeitar = useMutation({
++    mutationFn: (m) => api.delete(`/cadastro/${m.congregacao_id}/rejeitar/${m.id}`),
++    onSuccess: () => qc.invalidateQueries(['membros-pendentes']),
++  });
++
+   const abrirEdicao = (membro) => { setMembroEditando(membro); setModalAberto(true); };
+   const abrirCriacao = () => { setMembroEditando(null); setModalAberto(true); };
+   const fecharModal = () => { setModalAberto(false); setMembroEditando(null); };
+-
+   const totalPaginas = Math.ceil((data?.total || 0) / 20);
+ 
+   return (
+@@ -42,125 +60,172 @@ export default function Membros() {
+         </button>
+       </div>
+ 
+-      {/* Filtros */}
+-      <div className="flex gap-2 flex-wrap">
+-        <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2 flex-1 min-w-48">
+-          <Search size={16} className="text-gray-400" />
+-          <input
+-            value={busca}
+-            onChange={e => { setBusca(e.target.value); setPage(1); }}
+-            placeholder="Buscar por nome ou CPF..."
+-            className="flex-1 outline-none text-sm"
+-          />
+-        </div>
+-        <select
+-          value={status}
+-          onChange={e => { setStatus(e.target.value); setPage(1); }}
+-          className="bg-white border rounded-lg px-3 py-2 text-sm outline-none"
+-        >
+-          <option value="">Todos os status</option>
+-          {Object.entries(STATUS_MEMBRO).map(([v, { label }]) => (
+-            <option key={v} value={v}>{label}</option>
+-          ))}
+-        </select>
++      {/* Abas */}
++      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
++        <button onClick={() => setAba('ativos')}
++          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${aba === 'ativos' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
++          Membros
++        </button>
++        <button onClick={() => setAba('pendentes')}
++          className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${aba === 'pendentes' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
++          <Clock size={14} />
++          Pendentes
++          {pendentes?.length > 0 && <span className="bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5 leading-none">{pendentes.length}</span>}
++        </button>
+       </div>
+ 
+-      {/* Tabela */}
+-      <div className="bg-white rounded-xl border overflow-hidden">
+-        {isLoading ? (
+-          <div className="flex items-center justify-center h-48">
+-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+-          </div>
+-        ) : data?.dados?.length === 0 ? (
+-          <div className="text-center py-12 text-gray-400">
+-            <User size={48} className="mx-auto mb-2 opacity-30" />
+-            <p>Nenhum membro encontrado</p>
+-          </div>
+-        ) : (
+-          <>
+-            {/* Mobile: cards */}
+-            <div className="lg:hidden divide-y">
+-              {data?.dados?.map(m => (
+-                <div key={m.id} className="p-4 flex items-center gap-3">
+-                  {m.foto_url
+-                    ? <img src={m.foto_url} alt={m.nome} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+-                    : <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0">{m.nome[0]}</div>
+-                  }
+-                  <div className="flex-1 min-w-0">
+-                    <p className="font-medium text-gray-900 truncate">{m.nome}</p>
+-                    <p className="text-xs text-gray-500">{m.telefone || 'Sem telefone'} • {calcularIdade(m.data_nascimento)} anos</p>
++      {/* Aba Pendentes */}
++      {aba === 'pendentes' && (
++        <div className="bg-white rounded-xl border overflow-hidden">
++          {loadingPendentes ? (
++            <div className="flex items-center justify-center h-48">
++              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
++            </div>
++          ) : !pendentes?.length ? (
++            <div className="text-center py-12 text-gray-400">
++              <CheckCircle size={48} className="mx-auto mb-2 opacity-30" />
++              <p>Nenhum cadastro pendente</p>
++            </div>
++          ) : (
++            <div className="divide-y">
++              {pendentes.map(m => (
++                <div key={m.id} className="p-4 flex items-start gap-3">
++                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center font-bold text-orange-700 flex-shrink-0 mt-0.5">
++                    {m.nome[0]}
+                   </div>
+-                  <div className="flex flex-col items-end gap-1">
+-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_MEMBRO[m.status]?.color}`}>
+-                      {STATUS_MEMBRO[m.status]?.label}
+-                    </span>
+-                    <div className="flex gap-1">
+-                      <button onClick={() => abrirEdicao(m)} className="p-1 text-gray-400 hover:text-blue-600"><Edit size={14} /></button>
+-                      <button onClick={() => deletar.mutate(m.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>
++                  <div className="flex-1 min-w-0">
++                    <p className="font-semibold text-gray-900">{m.nome}</p>
++                    <p className="text-sm text-gray-500">{m.congregacao_nome || '—'}</p>
++                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
++                      {m.telefone && <span className="text-xs text-gray-400">📞 {m.telefone}</span>}
++                      {m.email && <span className="text-xs text-gray-400">✉️ {m.email}</span>}
++                      {m.cpf && <span className="text-xs text-gray-400">CPF: {m.cpf}</span>}
++                      {m.data_nascimento && <span className="text-xs text-gray-400">🎂 {formatarData(m.data_nascimento)}</span>}
+                     </div>
++                    {m.observacoes && <p className="text-xs text-gray-400 mt-1 italic">"{m.observacoes}"</p>}
++                  </div>
++                  <div className="flex flex-col gap-2 flex-shrink-0">
++                    <button onClick={() => aprovar.mutate(m)} disabled={aprovar.isPending}
++                      className="flex items-center gap-1 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-green-700 disabled:opacity-50">
++                      <CheckCircle size={12} /> Aprovar
++                    </button>
++                    <button onClick={() => { if (confirm('Rejeitar este cadastro?')) rejeitar.mutate(m); }} disabled={rejeitar.isPending}
++                      className="flex items-center gap-1 bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-100 disabled:opacity-50">
++                      <XCircle size={12} /> Rejeitar
++                    </button>
+                   </div>
+                 </div>
+               ))}
+             </div>
++          )}
++        </div>
++      )}
++
++      {/* Aba Membros Ativos */}
++      {aba === 'ativos' && (
++        <>
++          <div className="flex gap-2 flex-wrap">
++            <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2 flex-1 min-w-48">
++              <Search size={16} className="text-gray-400" />
++              <input value={busca} onChange={e => { setBusca(e.target.value); setPage(1); }}
++                placeholder="Buscar por nome ou CPF..."
++                className="flex-1 outline-none text-sm" />
++            </div>
++            <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
++              className="bg-white border rounded-lg px-3 py-2 text-sm outline-none">
++              <option value="">Todos os status</option>
++              {Object.entries(STATUS_MEMBRO).map(([v, { label }]) => <option key={v} value={v}>{label}</option>)}
++            </select>
++          </div>
+ 
+-            {/* Desktop: tabela */}
+-            <table className="hidden lg:table w-full text-sm">
+-              <thead className="bg-gray-50 border-b">
+-                <tr>
+-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
+-                  <th className="text-left px-4 py-3 font-medium text-gray-600">CPF</th>
+-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Nascimento</th>
+-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Telefone</th>
+-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Cargo</th>
+-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+-                  <th className="text-right px-4 py-3"></th>
+-                </tr>
+-              </thead>
+-              <tbody className="divide-y">
+-                {data?.dados?.map(m => (
+-                  <tr key={m.id} className="hover:bg-gray-50">
+-                    <td className="px-4 py-3">
+-                      <div className="flex items-center gap-2">
+-                        {m.foto_url
+-                          ? <img src={m.foto_url} alt={m.nome} className="w-7 h-7 rounded-full object-cover" />
+-                          : <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">{m.nome[0]}</div>
+-                        }
+-                        <span className="font-medium">{m.nome}</span>
++          <div className="bg-white rounded-xl border overflow-hidden">
++            {isLoading ? (
++              <div className="flex items-center justify-center h-48">
++                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
++              </div>
++            ) : data?.dados?.length === 0 ? (
++              <div className="text-center py-12 text-gray-400">
++                <User size={48} className="mx-auto mb-2 opacity-30" />
++                <p>Nenhum membro encontrado</p>
++              </div>
++            ) : (
++              <>
++                <div className="lg:hidden divide-y">
++                  {data?.dados?.map(m => (
++                    <div key={m.id} className="p-4 flex items-center gap-3">
++                      {m.foto_url
++                        ? <img src={m.foto_url} alt={m.nome} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
++                        : <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0">{m.nome[0]}</div>}
++                      <div className="flex-1 min-w-0">
++                        <p className="font-medium text-gray-900 truncate">{m.nome}</p>
++                        <p className="text-xs text-gray-500">{m.telefone || 'Sem telefone'} • {calcularIdade(m.data_nascimento)} anos</p>
+                       </div>
+-                    </td>
+-                    <td className="px-4 py-3 text-gray-500">{m.cpf || '—'}</td>
+-                    <td className="px-4 py-3 text-gray-500">{formatarData(m.data_nascimento)}</td>
+-                    <td className="px-4 py-3 text-gray-500">{m.telefone || '—'}</td>
+-                    <td className="px-4 py-3 text-gray-500">{m.cargo || '—'}</td>
+-                    <td className="px-4 py-3">
+-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_MEMBRO[m.status]?.color}`}>
+-                        {STATUS_MEMBRO[m.status]?.label}
+-                      </span>
+-                    </td>
+-                    <td className="px-4 py-3 text-right">
+-                      <div className="flex justify-end gap-1">
+-                        <button onClick={() => abrirEdicao(m)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit size={15} /></button>
+-                        <button onClick={() => { if (confirm('Remover membro?')) deletar.mutate(m.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
++                      <div className="flex flex-col items-end gap-1">
++                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_MEMBRO[m.status]?.color}`}>{STATUS_MEMBRO[m.status]?.label}</span>
++                        <div className="flex gap-1">
++                          <button onClick={() => abrirEdicao(m)} className="p-1 text-gray-400 hover:text-blue-600"><Edit size={14} /></button>
++                          <button onClick={() => deletar.mutate(m.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>
++                        </div>
+                       </div>
+-                    </td>
+-                  </tr>
+-                ))}
+-              </tbody>
+-            </table>
+-
+-            {/* Paginação */}
+-            {totalPaginas > 1 && (
+-              <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
+-                <p className="text-sm text-gray-500">Página {page} de {totalPaginas}</p>
+-                <div className="flex gap-1">
+-                  <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="p-1 rounded disabled:opacity-40 hover:bg-gray-200"><ChevronLeft size={18} /></button>
+-                  <button disabled={page === totalPaginas} onClick={() => setPage(p => p + 1)} className="p-1 rounded disabled:opacity-40 hover:bg-gray-200"><ChevronRight size={18} /></button>
++                    </div>
++                  ))}
+                 </div>
+-              </div>
++
++                <table className="hidden lg:table w-full text-sm">
++                  <thead className="bg-gray-50 border-b">
++                    <tr>
++                      <th className="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
++                      <th className="text-left px-4 py-3 font-medium text-gray-600">CPF</th>
++                      <th className="text-left px-4 py-3 font-medium text-gray-600">Nascimento</th>
++                      <th className="text-left px-4 py-3 font-medium text-gray-600">Telefone</th>
++                      <th className="text-left px-4 py-3 font-medium text-gray-600">Cargo</th>
++                      <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
++                      <th className="text-right px-4 py-3"></th>
++                    </tr>
++                  </thead>
++                  <tbody className="divide-y">
++                    {data?.dados?.map(m => (
++                      <tr key={m.id} className="hover:bg-gray-50">
++                        <td className="px-4 py-3">
++                          <div className="flex items-center gap-2">
++                            {m.foto_url
++                              ? <img src={m.foto_url} alt={m.nome} className="w-7 h-7 rounded-full object-cover" />
++                              : <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">{m.nome[0]}</div>}
++                            <span className="font-medium">{m.nome}</span>
++                          </div>
++                        </td>
++                        <td className="px-4 py-3 text-gray-500">{m.cpf || '—'}</td>
++                        <td className="px-4 py-3 text-gray-500">{formatarData(m.data_nascimento)}</td>
++                        <td className="px-4 py-3 text-gray-500">{m.telefone || '—'}</td>
++                        <td className="px-4 py-3 text-gray-500">{m.cargo || '—'}</td>
++                        <td className="px-4 py-3">
++                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_MEMBRO[m.status]?.color}`}>{STATUS_MEMBRO[m.status]?.label}</span>
++                        </td>
++                        <td className="px-4 py-3 text-right">
++                          <div className="flex justify-end gap-1">
++                            <button onClick={() => abrirEdicao(m)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit size={15} /></button>
++                            <button onClick={() => { if (confirm('Remover membro?')) deletar.mutate(m.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
++                          </div>
++                        </td>
++                      </tr>
++                    ))}
++                  </tbody>
++                </table>
++
++                {totalPaginas > 1 && (
++                  <div className="flex items-center justify-between px-4 py-3 border-t bg-gray-50">
++                    <p className="text-sm text-gray-500">Página {page} de {totalPaginas}</p>
++                    <div className="flex gap-1">
++                      <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="p-1 rounded disabled:opacity-40 hover:bg-gray-200"><ChevronLeft size={18} /></button>
++                      <button disabled={page === totalPaginas} onClick={() => setPage(p => p + 1)} className="p-1 rounded disabled:opacity-40 hover:bg-gray-200"><ChevronRight size={18} /></button>
++                    </div>
++                  </div>
++                )}
++              </>
+             )}
+-          </>
+-        )}
+-      </div>
++          </div>
++        </>
++      )}
+ 
+       {modalAberto && <FormMembro membro={membroEditando} onFechar={fecharModal} />}
+     </div>
+-- 
+2.43.0
+
