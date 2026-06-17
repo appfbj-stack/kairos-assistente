@@ -12,6 +12,7 @@ import adminRouter from "./admin/admin.js";
 import licenseRouter from "./admin/license.js";
 import backupRouter from "./admin/backup.js";
 import vpsRouter from "./vps/vps.js";
+import coreRouter, { expireOverdueTrials, bootstrapSuperAdmin } from "./core/index.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3010;
@@ -24,7 +25,8 @@ const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD;
 
 app.use((req: any, res: any, next: any) => {
   // /api/license/verify fica público de propósito — é a rota que os apps satélites consultam sem credencial
-  if (req.path === "/api/license/verify" || !BASIC_AUTH_USER || !BASIC_AUTH_PASSWORD) {
+  // /api/core/* tem sua própria autenticação JWT (login de empresa/SUPER_ADMIN), não usa a Basic Auth do Admin legado
+  if (req.path === "/api/license/verify" || req.path.startsWith("/api/core") || !BASIC_AUTH_USER || !BASIC_AUTH_PASSWORD) {
     return next();
   }
 
@@ -45,6 +47,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/license", licenseRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/vps", vpsRouter);
+app.use("/api/core", coreRouter);
 
 app.get("/api/health", async (_req: any, res: any) => {
   await getDb();
@@ -76,9 +79,15 @@ async function start() {
   await runMigrations();
   console.log("✅ Migrações aplicadas");
 
+  await bootstrapSuperAdmin();
+
   // Backup automático a cada 6 horas
   createBackup().catch(() => {});
   setInterval(() => createBackup().catch(() => {}), 6 * 60 * 60 * 1000);
+
+  // Expira trials do Core vencidos e bloqueia acesso automaticamente
+  expireOverdueTrials().catch(() => {});
+  setInterval(() => expireOverdueTrials().catch(() => {}), 60 * 60 * 1000);
 
   startBot();
 

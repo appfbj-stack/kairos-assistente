@@ -128,6 +128,125 @@ const migrations = [
       );
     `,
   },
+  {
+    // Core multi-tenant (empresas/users/módulos/licenças). Aditivo: não toca em
+    // clients/apps/licenses/payments, que continuam servindo o contrato público
+    // GET /api/license/verify já consumido pelos apps satélites em produção.
+    name: "003_core_platform",
+    sql: `
+      CREATE TABLE IF NOT EXISTS empresas (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        document TEXT DEFAULT '',
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS},
+        created_by TEXT,
+        updated_by TEXT,
+        deleted_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS core_users (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT REFERENCES empresas(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('SUPER_ADMIN','ADMIN_EMPRESA','GERENTE','OPERADOR','USUARIO','CLIENTE')),
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS},
+        created_by TEXT,
+        updated_by TEXT,
+        deleted_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS modules (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS company_modules (
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS},
+        PRIMARY KEY (empresa_id, module_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_licenses (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        license_key TEXT NOT NULL UNIQUE,
+        plan TEXT NOT NULL DEFAULT 'Lite',
+        status TEXT NOT NULL DEFAULT 'TRIAL' CHECK(status IN ('ATIVA','TRIAL','SUSPENSA','EXPIRADA','BLOQUEADA')),
+        trial BOOLEAN NOT NULL DEFAULT TRUE,
+        expires_at TEXT,
+        blocked BOOLEAN NOT NULL DEFAULT FALSE,
+        blocked_reason TEXT,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS license_keys (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT REFERENCES empresas(id) ON DELETE CASCADE,
+        license_id TEXT REFERENCES tenant_licenses(id) ON DELETE CASCADE,
+        key TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'gerada' CHECK(status IN ('gerada','ativa','revogada')),
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        activated_at TEXT,
+        revoked_at TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS license_logs (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT,
+        license_id TEXT,
+        action TEXT NOT NULL,
+        details TEXT DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS trials (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        days INTEGER NOT NULL CHECK(days IN (7,15,30)),
+        started_at TEXT NOT NULL DEFAULT ${TS},
+        ends_at TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ativo' CHECK(status IN ('ativo','encerrado')),
+        created_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS core_audit_log (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT,
+        user_id TEXT,
+        action TEXT NOT NULL,
+        entity TEXT,
+        entity_id TEXT,
+        details TEXT DEFAULT '',
+        ip TEXT DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS feature_flags (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT REFERENCES empresas(id) ON DELETE CASCADE,
+        key TEXT NOT NULL,
+        enabled BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS},
+        UNIQUE(empresa_id, key)
+      );
+    `,
+  },
 ];
 
 export async function runMigrations() {
