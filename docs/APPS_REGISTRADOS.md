@@ -13,13 +13,8 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Orçamentos Vidraçaria | `vidra-aria-top` | Lite | 3025 | — | [vidra-aria-top](https://github.com/appfbj-stack/vidra-aria-top) | ✅ Ativo |
 | Imobiliária Inteligente | `imobiliaria-inteligente` | Pro | 3030 | — | [imobiliaria-inteligente](https://github.com/appfbj-stack/imobiliaria-inteligente) | ✅ Ativo |
 | Agenda Mecânica Pro | `agenda-mecanica-pro` | Pro | 3035 | 8015 | [agenda-mecanica](https://github.com/appfbj-stack/agenda-mecanica) | ✅ Ativo |
-| Kairos Advocacia | `kairos-advocacia` | Pro | 3020 ⚠️ | 8010 ⚠️ | `kairos-advocacia/` (neste repositório) | 🚧 Não deployado |
+| Kairos Advocacia | `kairos-advocacia` | Pro | 3045 | 8025 | `kairos-advocacia/` (neste repositório) | 🚧 Não deployado |
 | Kairos Política | `kairos-politica` | Pro | 3040 | 8020 | `kairos-politica/` (neste repositório) | 🚧 Não deployado |
-
-⚠️ **Kairos Advocacia usa as mesmas portas da Sede Sorocaba (3020/8010)** —
-foi criado em sessão anterior sem consultar este arquivo. Ajustar para uma
-porta livre (ex.: 3045/8025) no `docker-compose.yml` do app antes de
-deployar na mesma VPS que a Sede Sorocaba.
 
 ---
 
@@ -40,10 +35,12 @@ deployar na mesma VPS que a Sede Sorocaba.
 | Agenda Mecânica Pro Backend | 8015 |
 | Kairos Política Frontend | 3040 |
 | Kairos Política Backend | 8020 |
+| Kairos Advocacia Frontend | 3045 |
+| Kairos Advocacia Backend | 8025 |
 
 ### Faixa livre para novos apps
-- **Frontend**: 3045, 3050, 3055...
-- **Backend**: 8025, 8030, 8035...
+- **Frontend**: 3050, 3055, 3060...
+- **Backend**: 8030, 8035, 8040...
 
 ---
 

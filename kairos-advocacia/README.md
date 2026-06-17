@@ -80,16 +80,18 @@ VITE_API_URL=http://localhost:8000 npm run dev
    ```
 6. Confirme que a rede externa `kairos_network` existe na VPS
    (`docker network create kairos_network` se ainda não existir).
-7. Deploy. As portas padrão são `8010` (backend) e `3020` (frontend) — ajuste
-   no `docker-compose.yml` se já estiverem em uso.
+7. Deploy. As portas reservadas para este app são `8025` (backend) e `3045`
+   (frontend) — ver `docs/APPS_REGISTRADOS.md` na raiz do ecossistema antes
+   de mudar, para não colidir com outro app já registrado (ex.: Sede
+   Sorocaba usa 3020/8010 na mesma VPS).
 8. **Esta VPS usa Caddy manual (não o Traefik/Domains do Dokploy)** — após o
    deploy, adicione ao `Caddyfile` e recarregue:
    ```
    advocacia.fbautomacao.space {
-       reverse_proxy 127.0.0.1:3020
+       reverse_proxy 127.0.0.1:3045
    }
    api.advocacia.fbautomacao.space {
-       reverse_proxy 127.0.0.1:8010
+       reverse_proxy 127.0.0.1:8025
    }
    ```
    ```bash

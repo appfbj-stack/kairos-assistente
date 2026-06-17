@@ -36,7 +36,7 @@ services:
     volumes:
       - documentos_data:/app/storage
     ports:
-      - "8010:8000"
+      - "8025:8000"
     networks:
       - kairos_network
 
@@ -50,7 +50,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "3020:80"
+      - "3045:80"
     networks:
       - kairos_network
 
