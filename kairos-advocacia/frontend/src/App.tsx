@@ -7,6 +7,7 @@ import Clientes from "./pages/Clientes";
 import Processos from "./pages/Processos";
 import ProcessoDetalhe from "./pages/ProcessoDetalhe";
 import Agenda from "./pages/Agenda";
+import Financeiro from "./pages/Financeiro";
 import Usuarios from "./pages/Usuarios";
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/processos" element={<Processos />} />
         <Route path="/processos/:id" element={<ProcessoDetalhe />} />
         <Route path="/agenda" element={<Agenda />} />
+        <Route path="/financeiro" element={<Financeiro />} />
         <Route
           path="/usuarios"
           element={

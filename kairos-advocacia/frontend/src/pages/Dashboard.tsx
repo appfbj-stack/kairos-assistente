@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Briefcase, Users, CalendarClock, Scale } from "lucide-react";
+import { Briefcase, Users, CalendarClock, Scale, Wallet, AlertTriangle } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../hooks/useAuth";
 
@@ -30,6 +30,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <StatCard label="Meus processos" value={stats.meus_processos ?? 0} icon={Briefcase} />
           <StatCard label="Processos ativos" value={stats.processos_ativos ?? 0} icon={Scale} />
+          <StatCard label="Faturas pendentes" value={stats.faturas_pendentes ?? 0} icon={Wallet} />
+          <StatCard label="Valor pendente" value={`R$ ${Number(stats.valor_pendente ?? 0).toLocaleString("pt-BR")}`} icon={AlertTriangle} />
         </div>
       </div>
     );
@@ -43,6 +45,9 @@ export default function Dashboard() {
         <StatCard label="Processos ativos" value={stats.processos_ativos ?? 0} icon={Briefcase} />
         <StatCard label="Valor das causas ativas" value={`R$ ${Number(stats.valor_causas_ativas ?? 0).toLocaleString("pt-BR")}`} icon={Scale} />
         <StatCard label="Compromissos pendentes" value={stats.compromissos_pendentes ?? 0} icon={CalendarClock} />
+        <StatCard label="A receber" value={`R$ ${Number(stats.a_receber ?? 0).toLocaleString("pt-BR")}`} icon={Wallet} />
+        <StatCard label="Recebido este mês" value={`R$ ${Number(stats.recebido_mes ?? 0).toLocaleString("pt-BR")}`} icon={Wallet} />
+        <StatCard label="Faturas atrasadas" value={stats.faturas_atrasadas ?? 0} icon={AlertTriangle} />
       </div>
 
       <div className="mt-8">

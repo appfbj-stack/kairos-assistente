@@ -51,6 +51,11 @@ export interface Compromisso {
   id: string; titulo: string; tipo: string; data_hora: string; local: string;
   processo_id?: string | null; responsavel_id?: number | null; status: string; observacoes?: string | null;
 }
+export interface Fatura {
+  id: string; cliente_id: string; processo_id?: string | null; descricao: string;
+  valor: number; data_emissao: string; data_vencimento: string; status: string;
+  data_pagamento?: string | null; forma_pagamento?: string | null;
+}
 
 export const api = {
   login: (email: string, password: string) =>
@@ -94,6 +99,15 @@ export const api = {
     create: (data: any) => req<Compromisso>("/agenda", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: any) => req<Compromisso>(`/agenda/${id}`, { method: "PUT", body: JSON.stringify(data) }),
     delete: (id: string) => req<void>(`/agenda/${id}`, { method: "DELETE" }),
+  },
+
+  faturas: {
+    list: () => req<Fatura[]>("/faturas"),
+    create: (data: any) => req<Fatura>("/faturas", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: any) => req<Fatura>(`/faturas/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    pagar: (id: string, data: any) => req<Fatura>(`/faturas/${id}/pagar`, { method: "POST", body: JSON.stringify(data) }),
+    cancelar: (id: string) => req<Fatura>(`/faturas/${id}/cancelar`, { method: "POST" }),
+    delete: (id: string) => req<void>(`/faturas/${id}`, { method: "DELETE" }),
   },
 
   dashboard: {

@@ -23,14 +23,15 @@ PostgreSQL no backend, Vite + React + Tailwind no frontend, multi-tenant
   (`/processos/{id}/movimentacoes`)
 - Agenda jurídica (`/agenda`) — audiências, prazos, reuniões
 - Dashboard com estatísticas agregadas (`/dashboard/stats`)
+- Financeiro (`/faturas`) — faturas com emissão, vencimento, pagamento e
+  cancelamento; indicadores de "a receber" e "recebido no mês" no dashboard
 - Portal do cliente "lite": usuários com `role=cliente` só veem os próprios
-  processos e compromissos
+  processos, compromissos e faturas
 - Verificação de licença Kairos Admin no login (fail-open se indisponível)
 
 ## Fora do escopo desta versão (Fase 2)
 
 - Gestão de documentos com upload/MinIO e assinatura digital
-- Financeiro completo (faturas, recebimentos, inadimplência)
 - Chat interno entre equipe e cliente
 - Assistente de IA jurídica
 - Login social (OAuth Google)

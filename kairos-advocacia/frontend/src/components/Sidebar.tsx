@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, Briefcase, CalendarDays, UserCog, LogOut, Scale } from "lucide-react";
+import { LayoutDashboard, Users, Briefcase, CalendarDays, UserCog, LogOut, Scale, Wallet } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -32,6 +32,9 @@ export default function Sidebar() {
         </NavLink>
         <NavLink to="/agenda" className={linkClass}>
           <CalendarDays className="h-4 w-4" /> Agenda
+        </NavLink>
+        <NavLink to="/financeiro" className={linkClass}>
+          <Wallet className="h-4 w-4" /> Financeiro
         </NavLink>
         {user?.role === "admin" && (
           <NavLink to="/usuarios" className={linkClass}>

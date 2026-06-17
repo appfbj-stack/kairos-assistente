@@ -86,6 +86,22 @@ class Compromisso(Base):
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-# === Fase 2 (não implementado nesta versão): Documento (MinIO + assinatura
-# digital), Fatura/Pagamento (financeiro completo), Mensagem (chat interno),
-# integração de IA jurídica e login OAuth Google. Ver README.md.
+# ── Fatura (financeiro) ─────────────────────────────────────────────────────
+class Fatura(Base):
+    __tablename__ = "faturas"
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    cliente_id: Mapped[str] = mapped_column(ForeignKey("clientes.id"), index=True)
+    processo_id: Mapped[str | None] = mapped_column(ForeignKey("processos.id"), nullable=True)
+    descricao: Mapped[str] = mapped_column(String(255), default="")
+    valor: Mapped[float] = mapped_column(Float, default=0)
+    data_emissao: Mapped[str] = mapped_column(String(10), default="")  # YYYY-MM-DD
+    data_vencimento: Mapped[str] = mapped_column(String(10), default="")  # YYYY-MM-DD
+    status: Mapped[str] = mapped_column(String(20), default="pendente")  # pendente | paga | cancelada
+    data_pagamento: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    forma_pagamento: Mapped[str | None] = mapped_column(String(30), nullable=True)  # pix | boleto | cartao | transferencia
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+# === Fase 2 restante (não implementado nesta versão): Documento (MinIO +
+# assinatura digital), Mensagem (chat interno), integração de IA jurídica e
+# login OAuth Google. Ver README.md.
