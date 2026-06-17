@@ -15,6 +15,9 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Agenda Mecânica Pro | `agenda-mecanica-pro` | Pro | 3035 | 8015 | [agenda-mecanica](https://github.com/appfbj-stack/agenda-mecanica) | ✅ Ativo |
 | Kairos Advocacia | `kairos-advocacia` | Pro | 3045 | 8025 | `kairos-advocacia/` (neste repositório) | 🚧 Não deployado |
 | Kairos Política | `kairos-politica` | Pro | 3040 | 8020 | `kairos-politica/` (neste repositório) | 🚧 Não deployado |
+| Fotografia (Kairos) | `fotoagenda` | Pro | 3050 | 8030 | `foto-agenda/` (neste repositório — build próprio, distinto do FotoAgenda Pro externo acima) | 🚧 Não deployado |
+
+> **Fotografia (Kairos):** o código em `foto-agenda/backend/app/main.py` já manda `app_slug=fotoagenda` fixo na verificação de licença. Ao registrar este app no Kairos Admin (passo 2 abaixo), o slug **precisa ser exatamente `fotoagenda`** — não confundir com o slug `foto-agenda-pro` do app externo já ativo.
 
 ---
 
@@ -37,10 +40,12 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Kairos Política Backend | 8020 |
 | Kairos Advocacia Frontend | 3045 |
 | Kairos Advocacia Backend | 8025 |
+| Fotografia (Kairos) Frontend | 3050 |
+| Fotografia (Kairos) Backend | 8030 |
 
 ### Faixa livre para novos apps
-- **Frontend**: 3050, 3055, 3060...
-- **Backend**: 8030, 8035, 8040...
+- **Frontend**: 3055, 3060...
+- **Backend**: 8035, 8040...
 
 ---
 

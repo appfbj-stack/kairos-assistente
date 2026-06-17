@@ -33,8 +33,13 @@ pedido pela missão atual.
 
   + Kairos Lite (sem backend, dados em Google Sheets): Vidraçaria, Imobiliária,
     Oficina, Almoxarifado — cada um é um repo/deploy próprio fora deste monorepo.
-  + foto-agenda/ (pasta local deste monorepo) = PROTÓTIPO desconectado do
-    docker-compose.yml raiz, não é cópia do app de produção.
+  + foto-agenda/ (pasta local deste monorepo) = app FastAPI+React completo
+    (Tenant/TenantModule/require_module, rotas auth/admin/shoots/hermes/panel,
+    domínio fotoagenda.fbautomacao.space hardcoded no fallback do frontend),
+    mesmo nível de maturidade dos outros satélites Pro. Só não tinha
+    docker-compose.yml nem driver Postgres no requirements.txt — corrigido
+    nesta sessão. Ainda não está registrado em `apps`/`licenses` (slug usado
+    no código: `fotoagenda`) nem deployado.
 ```
 
 7 apps registrados em produção/homologação (`docs/APPS_REGISTRADOS.md`), 14 portas
@@ -49,11 +54,11 @@ reservadas, deploy padronizado via Dokploy + Docker Compose + rede `kairos_netwo
 | Banco | Admin: 1 Postgres único, sem `tenant_id`/`empresa_id` em nenhuma tabela. Cada satélite Pro: Postgres **próprio e isolado**, com `Tenant`+`tenant_id` em toda tabela de domínio. Lite: Google Sheets, sem schema relacional. |
 | Models | Sem modelo de domínio genérico entre nichos: Política (`Cidadao`/`Demanda`), Advocacia (`Processo`/`Movimentacao`/`Fatura`), Sede Sorocaba (`Membro`/`Congregacao`/`Carteirinha`/`Batismo`, nomenclatura PT). Cada app foi desenhado fim-a-fim. |
 | APIs | Único contrato compartilhado: `GET /api/license/verify`. Resto é API REST própria por satélite, sem padrão comum de paginação/erro/auth. |
-| Autenticação | 4 esquemas distintos coexistindo: Admin = Basic Auth fixa; Política/Advocacia = e-mail+senha JWT; Sede Sorocaba = Google OAuth exclusivo (sem senha); protótipo `foto-agenda/` = JWT com roles. |
+| Autenticação | 4 esquemas distintos coexistindo: Admin = Basic Auth fixa; Política/Advocacia = e-mail+senha JWT; Sede Sorocaba = Google OAuth exclusivo (sem senha); `foto-agenda/` = e-mail+senha JWT com roles (`super_admin`/`admin`), igual ao padrão Política/Advocacia. |
 | Permissões | Sem hierarquia unificada. Admin não tem RBAC (1 usuário). Cada satélite tem seu próprio conjunto de papéis, todos diferentes entre si. |
 | Licenciamento | Maduro e já é o "Core" de fato: tabelas `clients`/`apps`/`licenses`/`logs`/`payments` no Admin, status `trial`/`active`/`expired`/`blocked`, endpoint único consumido por todos os satélites. |
 | Docker/Dokploy | Padrão consistente: 1 `docker-compose.yml` por app, rede externa `kairos_network`, Traefik/Dokploy como proxy, portas documentadas e sem conflito (`docs/APPS_REGISTRADOS.md`). |
-| Apps existentes | 7 registrados: FotoAgenda Pro (ativo, repo externo), Sede Sorocaba (ativo, cliente real), Vidraçaria (Lite, ativo), Imobiliária (Pro, ativo), Agenda Mecânica (Pro, ativo, repo externo), Advocacia (não deployado), Política (não deployado). |
+| Apps existentes | 8 registrados em `docs/APPS_REGISTRADOS.md`: FotoAgenda Pro (ativo, repo externo), Sede Sorocaba (ativo, cliente real), Vidraçaria (Lite, ativo), Imobiliária (Pro, ativo), Agenda Mecânica (Pro, ativo, repo externo), Advocacia (não deployado), Política (não deployado), Fotografia/`foto-agenda/` deste monorepo (não deployado, slug `fotoagenda` — distinto do FotoAgenda Pro externo). |
 
 ---
 
@@ -70,8 +75,8 @@ reservadas, deploy padronizado via Dokploy + Docker Compose + rede `kairos_netwo
 - **Boilerplate Pro** (`core/config.py`, `core/database.py`, `core/security.py`, `deps.py`,
   `services/license.py`) — idêntico nos 3 satélites Pro deste monorepo. Candidato direto a
   pacote Python compartilhado (`kairos-core-sdk`).
-- **`TenantModule`** (módulos ativáveis por tenant, `require_module()`) — já prototipado na
-  pasta `foto-agenda/` (não está em produção, mas é o precedente de design mais próximo do
+- **`TenantModule`** (módulos ativáveis por tenant, `require_module()`) — já implementado na
+  pasta `foto-agenda/` (ainda não deployado, mas é o precedente de design mais próximo do
   sistema de módulos pedido na Etapa 7).
 - **Módulos KV genéricos** (`memory_items`, `settings` no Admin) — reaproveitáveis como base
   do módulo de Notificações/Configurações do Core.
@@ -120,9 +125,10 @@ reservadas, deploy padronizado via Dokploy + Docker Compose + rede `kairos_netwo
 2. **Sede Sorocaba tem cliente real em produção.** Qualquer migração de dados exige janela
    de manutenção e plano de rollback testado antes — risco de perda de dados de cliente
    pagante se feito sem isso.
-3. **App de Fotografia "oficial" vive em repositório externo** (`foto-agenda-v1`), fora do
-   escopo de acesso desta sessão. A pasta `foto-agenda/` local é só um protótipo — tratá-la
-   como produção levaria a decisões erradas.
+3. **Existem dois apps de Fotografia distintos**: o externo já em produção (`foto-agenda-v1`,
+   slug `foto-agenda-pro`, fora do escopo de acesso desta sessão) e o build deste monorepo
+   (`foto-agenda/`, slug `fotoagenda`, agora com docker-compose/driver Postgres prontos mas
+   ainda não deployado). Não confundir os dois ao registrar/migrar — slugs e portas diferentes.
 4. **Lite apps (Vidraçaria, Imobiliária, Oficina, Almoxarifado) também são repositórios
    externos** sem backend — entrar no Core multi-tenant exige criar backend do zero para
    cada um antes de sequer pensar em `empresa_id`.

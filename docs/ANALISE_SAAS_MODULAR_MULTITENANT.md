@@ -20,13 +20,17 @@ multi-tenant **dentro do próprio app** (modelo `Tenant`/`Usuario` com
 `tenant_id` em toda tabela de domínio) — mas cada um é um produto/deploy
 separado, não módulos de uma mesma plataforma.
 
-Não existe hoje, em lugar nenhum do código, um app de "Fotografia" embutido
-dentro do Kairos Admin. O que existe é:
+Não existe um app de "Fotografia" embutido dentro do Kairos Admin — existem
+dois apps de Fotografia **separados**:
 - Um app satélite real **em produção**, deployado a partir de um repositório
-  **externo** (`foto-agenda-v1`, portas 3015/8005).
-- Uma pasta local `foto-agenda/` neste monorepo que **não é** uma cópia de
-  trabalho desse repo de produção — é um protótipo/referência de design
-  desconectado do `docker-compose.yml` raiz (ver §3).
+  **externo** (`foto-agenda-v1`, slug `foto-agenda-pro`, portas 3015/8005).
+- Uma pasta local `foto-agenda/` neste monorepo: app FastAPI+React completo
+  e funcional (não é cópia de trabalho do repo externo acima, é um build
+  próprio), com `Tenant`/`TenantModule`/`require_module()`, rotas
+  auth/admin/shoots/hermes/panel/google_auth e verificação de licença contra
+  o Kairos Admin (slug `fotoagenda`). Só não tinha `docker-compose.yml` nem
+  driver Postgres — corrigido nesta sessão (ver §3). Ainda não está
+  registrado em `apps`/`licenses` nem deployado.
 
 Isso muda o ponto de partida do pedido: não estamos "extraindo módulos de
 dentro de um app de Fotografia monolítico" — estamos decidindo se vale a pena
@@ -73,7 +77,7 @@ compartilhado.
 | Motor de licenciamento (`clients`/`apps`/`licenses`/`payments`, contrato `GET /api/license/verify`) | `backend/src/admin/license.ts` | Core — já é o contrato público usado por todos os satélites, está maduro |
 | Boilerplate Pro (`config.py`/`database.py`/`security.py`/`deps.py`/`services/license.py`) | Duplicado manualmente em política/advocacia/sede-sorocaba | Pacote Python compartilhado (`kairos-core-sdk`), hoje é copy-paste |
 | Padrão `Tenant`+`tenant_id` em toda tabela de domínio | Já implementado em política/advocacia/sede-sorocaba | Já é o padrão — só falta extrair para biblioteca |
-| `TenantModule` (módulos ativáveis por tenant: `hermes`/`financeiro`/`relatorios`/`calendario`) + `require_module()` | Só na pasta-protótipo `foto-agenda/` (não está em produção) | É o precedente de design mais próximo do que o pedido descreve — vale estudar antes de inventar de novo |
+| `TenantModule` (módulos ativáveis por tenant: `hermes`/`financeiro`/`relatorios`/`calendario`) + `require_module()` | Implementado em `foto-agenda/` (app completo, ainda não deployado) | É o precedente de design mais próximo do que o pedido descreve — vale estudar antes de inventar de novo |
 | Módulos KV genéricos (`memory_items`, `settings`) | `backend/src/memory`, `backend/src/settings` (Kairos Admin) | Reaproveitável como módulo Core, mas hoje vive só na instância single-tenant do Admin |
 
 ---
@@ -89,7 +93,7 @@ compartilhado.
   fim-a-fim, não como módulo de uma plataforma.
 - **Autenticação é inconsistente entre os 4 sistemas**: Kairos Admin = Basic
   Auth única; Política/Advocacia = e-mail+senha JWT; Sede Sorocaba = Google
-  OAuth (sem senha, sem autocadastro); protótipo `foto-agenda/` = JWT com
+  OAuth (sem senha, sem autocadastro); `foto-agenda/` = JWT com
   roles `super_admin`/`admin`. Unificar isso é, por si só, um projeto à
   parte.
 - **Kairos Admin não tem isolamento de dados nem RBAC** — é a ferramenta
@@ -108,11 +112,12 @@ compartilhado.
 
 ## 5. Riscos da migração para o modelo do pedido (monólito único + `empresa_id`)
 
-1. **Não existe um "módulo Fotografia" para extrair.** O app de Fotografia
-   real está em outro repositório, fora do escopo de acesso desta sessão
-   (`appfbj-stack/foto-agenda-v1`). A pasta local `foto-agenda/` é um
-   protótipo desconectado do compose raiz — não dá para tratá-la como "o
-   que está em produção hoje".
+1. **Existem dois apps de Fotografia, não um.** O que já está em produção
+   vive em outro repositório, fora do escopo de acesso desta sessão
+   (`appfbj-stack/foto-agenda-v1`, slug `foto-agenda-pro`). A pasta local
+   `foto-agenda/` é um app próprio e completo deste monorepo (slug
+   `fotoagenda`), ainda não deployado — não confundir os dois nem tratar um
+   como cópia do outro.
 2. **Sede Sorocaba tem cliente real.** O app standalone original já está
    em produção (`sede.fbautomacao.space`); a versão migrada neste monorepo
    (`kairos-sede-sorocaba/`) ainda não foi deployada. Fundir esses dados em
@@ -184,16 +189,16 @@ diferentes:
 
 | Dimensão | Situação encontrada |
 |---|---|
-| **Estrutura de pastas** | Monorepo na raiz: `backend/` + `frontend/` = Kairos Admin (hub). `kairos-politica/`, `kairos-advocacia/`, `kairos-sede-sorocaba/` = satélites Pro completos (cada um com seu próprio `backend/`+`frontend/`+`docker-compose.yml`). `foto-agenda/` = protótipo isolado, sem `docker-compose.yml` próprio e fora do compose raiz. `docs/` = documentação do ecossistema (arquitetura oficial, template Pro, apps registrados, deploy). |
+| **Estrutura de pastas** | Monorepo na raiz: `backend/` + `frontend/` = Kairos Admin (hub). `kairos-politica/`, `kairos-advocacia/`, `kairos-sede-sorocaba/`, `foto-agenda/` = satélites Pro completos (cada um com seu próprio `backend/`+`frontend/`+`docker-compose.yml`). `docs/` = documentação do ecossistema (arquitetura oficial, template Pro, apps registrados, deploy). |
 | **Banco de dados** | Kairos Admin: 1 banco Postgres único, tabelas `conversations`/`messages`/`agenda_items`/`memory_items`/`settings`/`clients`/`apps`/`licenses`/`logs`/`payments`, **nenhuma coluna `tenant_id`/`empresa_id`** (confirmado em `backend/src/database/migrations.ts`). Cada satélite Pro: **banco Postgres próprio e isolado**, com `Tenant` + `tenant_id` em toda tabela de domínio. |
-| **Models** | Admin: modelos administrativos (`clients`, `apps`, `licenses`, `payments`) — sem conceito de "usuário final" do cliente. Política: `Tenant`/`Usuario`/`Cidadao`/`Demanda`. Advocacia: `Tenant`/`User`/`Cliente`/`Processo`/`Movimentacao`/`Compromisso`/`Fatura`/`Documento`. Sede Sorocaba: `Tenant`/`Usuario`/`Membro`/`Obreiro`/`Congregacao`/`Patrimonio`/`Carteirinha`/`Batismo` (nomenclatura em português, específica do nicho religioso). Protótipo `foto-agenda/`: `Tenant`/`User`/`TenantModule`/`StudioSettings`/`FotoClient`/`Shoot`/`HermesUsage`. Não há um modelo de domínio genérico reaproveitável entre nichos — cada um foi desenhado fim-a-fim. |
+| **Models** | Admin: modelos administrativos (`clients`, `apps`, `licenses`, `payments`) — sem conceito de "usuário final" do cliente. Política: `Tenant`/`Usuario`/`Cidadao`/`Demanda`. Advocacia: `Tenant`/`User`/`Cliente`/`Processo`/`Movimentacao`/`Compromisso`/`Fatura`/`Documento`. Sede Sorocaba: `Tenant`/`Usuario`/`Membro`/`Obreiro`/`Congregacao`/`Patrimonio`/`Carteirinha`/`Batismo` (nomenclatura em português, específica do nicho religioso). `foto-agenda/`: `Tenant`/`User`/`TenantModule`/`StudioSettings`/`FotoClient`/`Shoot`/`HermesUsage`. Não há um modelo de domínio genérico reaproveitável entre nichos — cada um foi desenhado fim-a-fim. |
 | **APIs** | Admin expõe `GET /api/license/verify?client_id=&app_slug=` (única rota pública) + rotas administrativas internas protegidas por Basic Auth. Cada satélite expõe sua própria API REST FastAPI sob prefixo `/api`, com rotas JWT-protegidas (exceto `/api/auth/*`). Nenhum contrato de API é compartilhado entre satélites alem do `license.verify`. |
 | **Serviços** | `services/license.py` (verificação de licença) é **copiado manualmente** em cada satélite a partir do `TEMPLATE_PRO.md` — mesma lógica, arquivos físicos diferentes. `backend/src/admin/license.ts` no Admin é a fonte da verdade real. |
 | **Componentes / Telas** | Admin: painel único Next.js (operação interna da Kairós). Cada satélite Pro: frontend próprio React+Vite+Tailwind, com telas específicas do nicho (ex.: Carteirinhas/Batismos na Sede Sorocaba, Processos/Faturas na Advocacia) — zero componentes de UI compartilhados entre apps. |
 | **Middleware** | Admin: 1 middleware global de Basic Auth (`backend/src/main.ts`), sem filtro de tenant (não se aplica — single-tenant). Satélites: não há uma camada de "middleware de tenant" separada — o isolamento é feito via dependency JWT (`deps.py`) que injeta o `tenant_id` do usuário autenticado, aplicado manualmente em cada query/router. Ou seja, **hoje depende de disciplina por endpoint**, não de um filtro automático centralizado — ponto de atenção mesmo dentro do modelo atual. |
-| **Permissões** | Admin: nenhuma (1 único admin via senha compartilhada). Cada satélite tem seu próprio conjunto de papéis, todos diferentes: Advocacia = `admin`/`advogado`/`assistente_juridico`/`cliente`; protótipo `foto-agenda` = `super_admin`/`admin`; Política e Sede Sorocaba têm variações próprias. Não existe hierarquia de papéis unificada entre apps. |
-| **Autenticação** | 4 esquemas distintos coexistindo: Admin = Basic Auth (env var fixa); Política/Advocacia = e-mail+senha com JWT; Sede Sorocaba = Google OAuth exclusivo (sem senha, sem autocadastro); protótipo `foto-agenda` = JWT com roles. |
-| **Deploy** | Padrão único e consistente: Dokploy + Docker Compose por app, rede Docker externa compartilhada `kairos_network`, reverse proxy via Traefik/Domains do Dokploy (ou Caddy manual no caso da Advocacia), portas reservadas e documentadas em `docs/APPS_REGISTRADOS.md` (Admin 3008/3010, FotoAgenda 3015/8005, Sede Sorocaba 3020/8010, Vidraçaria 3025, Imobiliária 3030, Agenda Mecânica 3035/8015, Política 3040/8020, Advocacia 3045/8025). |
+| **Permissões** | Admin: nenhuma (1 único admin via senha compartilhada). Cada satélite tem seu próprio conjunto de papéis, todos diferentes: Advocacia = `admin`/`advogado`/`assistente_juridico`/`cliente`; `foto-agenda` = `super_admin`/`admin`; Política e Sede Sorocaba têm variações próprias. Não existe hierarquia de papéis unificada entre apps. |
+| **Autenticação** | 4 esquemas distintos coexistindo: Admin = Basic Auth (env var fixa); Política/Advocacia/`foto-agenda` = e-mail+senha com JWT; Sede Sorocaba = Google OAuth exclusivo (sem senha, sem autocadastro). |
+| **Deploy** | Padrão único e consistente: Dokploy + Docker Compose por app, rede Docker externa compartilhada `kairos_network`, reverse proxy via Traefik/Domains do Dokploy (ou Caddy manual no caso da Advocacia), portas reservadas e documentadas em `docs/APPS_REGISTRADOS.md` (Admin 3008/3010, FotoAgenda Pro externo 3015/8005, Sede Sorocaba 3020/8010, Vidraçaria 3025, Imobiliária 3030, Agenda Mecânica 3035/8015, Política 3040/8020, Advocacia 3045/8025, Fotografia `foto-agenda/` 3050/8030). |
 | **Dependências** | Admin: Express+TypeScript+`pg` (backend), Next.js+React (frontend). Satélites Pro: FastAPI+SQLAlchemy+Pydantic+`python-jose`/`passlib` (backend), Vite+React+Tailwind (frontend). **Nenhum pacote compartilhado** entre satélites — cada `requirements.txt`/`package.json` é independente, apesar do boilerplate ser quase idêntico. |
 
 ---

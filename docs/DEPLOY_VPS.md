@@ -204,6 +204,23 @@ VITE_API_URL=https://api.politica.fbautomacao.space
 Portas reservadas: `3040` (frontend) e `8020` (backend) — ver
 `docs/APPS_REGISTRADOS.md`. Ainda **não deployado** em nenhuma VPS.
 
+### Fotografia (`foto-agenda/` — ainda dentro deste monorepo)
+```env
+POSTGRES_PASSWORD=<gerado>
+SECRET_KEY=<gerado>
+KAIROS_CLIENT_ID=<copiado do passo 2, app_slug deve ser "fotoagenda">
+ADMIN_EMAIL=<email do super admin>
+ADMIN_PASSWORD=<senha forte>
+HERMES_API_URL=
+HERMES_EMAIL=
+HERMES_PASSWORD=
+VITE_API_URL=https://api.fotoagenda.fbautomacao.space
+```
+Portas reservadas: `3050` (frontend) e `8030` (backend) — ver
+`docs/APPS_REGISTRADOS.md`. Ainda **não deployado** em nenhuma VPS. Distinto
+do FotoAgenda Pro externo (`foto-agenda-v1`, slug `foto-agenda-pro`,
+3015/8005) — não reutilizar slug/portas dele.
+
 ---
 
 ## 4. Checklist final
