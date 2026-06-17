@@ -1,8 +1,8 @@
 # Deploy do Ecossistema Kairos na VPS (Dokploy)
 
 Guia de referência para subir o **Kairos Admin** e os apps satélites já adequados
-(`foto-agenda-v1`, `sede-sorocaba`, `vidra-aria-top`, `imobiliaria-inteligente`,
-`agenda-mecanica`) na VPS via Dokploy + Traefik.
+(`foto-agenda-v1`, `kairos-sede-sorocaba` [neste monorepo], `vidra-aria-top`,
+`imobiliaria-inteligente`, `agenda-mecanica`) na VPS via Dokploy + Traefik.
 
 > Os valores reais de senha/segredo gerados para esta VPS **não ficam neste
 > arquivo** (evita vazar segredo no histórico do git). Eles foram entregues
@@ -141,17 +141,25 @@ ADMIN_PASSWORD=<defina uma senha forte>
 > frontend (`fotografia.fbautomacao.space`) estava faltando.
 
 ### Sede Sorocaba (`sede-sorocaba`)
+Migrado para FastAPI + PostgreSQL multi-tenant, buildado a partir de
+`kairos-sede-sorocaba/` neste monorepo (não mais o repositório
+Node/Express/SQLite original). Ver `kairos-sede-sorocaba/README.md` para o
+passo a passo completo de deploy.
 ```env
+POSTGRES_PASSWORD=<gerado>
+SECRET_KEY=<gerado>
 GOOGLE_CLIENT_ID=<do Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<do Google Cloud Console>
-JWT_SECRET=<gerado>
-OPENROUTER_API_KEY=<sua chave, opcional — usado no módulo IA>
+GOOGLE_REDIRECT_URI=https://api.sede.fbautomacao.space/api/auth/google/callback
+FRONTEND_URL=https://sede.fbautomacao.space
 KAIROS_ADMIN_URL=https://api.admin.fbautomacao.space
 KAIROS_CLIENT_ID=<copiado do passo 2>
-ADMIN_EMAIL=<email do super admin da sede>
+ADMIN_EMAIL=<email do super admin da sede, deve ser uma conta Google válida>
 ```
 Domínios já fixados no `docker-compose.yml`: `sede.fbautomacao.space` (UI) e
-`api.sede.fbautomacao.space` (API + callback do Google OAuth).
+`api.sede.fbautomacao.space` (API + callback do Google OAuth). Lembre de
+cadastrar a mesma `GOOGLE_REDIRECT_URI` nas credenciais OAuth2 do Google
+Cloud Console.
 
 ### Orçamentos Vidraçaria (`vidra-aria-top`, Lite)
 ```env
