@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: politica
+      POSTGRES_USER: politica
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-politica_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U politica -d politica"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kairos_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://politica:${POSTGRES_PASSWORD:-politica_secret}@postgres:5432/politica
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL:-}
+      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    ports:
+      - "8020:8000"
+    networks:
+      - kairos_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3030:80"
+    networks:
+      - kairos_network
+
+volumes:
+  postgres_data:
+
+networks:
+  kairos_network:
+    external: true
