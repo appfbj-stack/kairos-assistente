@@ -44,6 +44,8 @@ Guia de referência para subir o **Kairos Admin** e os apps satélites já adequ
    | `imobiliaria.fbautomacao.space` | Imobiliária Inteligente |
    | `mecanica.fbautomacao.space` | Agenda Mecânica Pro (frontend) |
    | `api.mecanica.fbautomacao.space` | Agenda Mecânica Pro (backend) |
+   | `politica.fbautomacao.space` | Kairos Política (frontend) |
+   | `api.politica.fbautomacao.space` | Kairos Política (backend) |
 
 ---
 
@@ -180,6 +182,19 @@ HERMES_PASSWORD=
 KAIROS_ADMIN_URL=https://api.admin.fbautomacao.space
 KAIROS_CLIENT_ID=<copiado do passo 2>
 ```
+
+### Kairos Política (`kairos-politica/` — ainda dentro deste monorepo)
+```env
+POSTGRES_PASSWORD=<gerado>
+SECRET_KEY=<gerado>
+KAIROS_ADMIN_URL=https://api.admin.fbautomacao.space
+KAIROS_CLIENT_ID=<copiado do passo 2>
+ADMIN_EMAIL=admin@gabinete.com
+ADMIN_PASSWORD=<senha forte>
+VITE_API_URL=https://api.politica.fbautomacao.space
+```
+Portas reservadas: `3040` (frontend) e `8020` (backend) — ver
+`docs/APPS_REGISTRADOS.md`. Ainda **não deployado** em nenhuma VPS.
 
 ---
 

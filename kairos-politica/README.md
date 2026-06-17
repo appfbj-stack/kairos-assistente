@@ -80,21 +80,13 @@ VITE_API_URL=http://localhost:8000 npm run dev
    ```
 6. Confirme que a rede externa `kairos_network` existe na VPS
    (`docker network create kairos_network` se ainda não existir).
-7. Deploy. As portas padrão são `8020` (backend) e `3030` (frontend) — ajuste
-   no `docker-compose.yml` se já estiverem em uso.
-8. **Esta VPS usa Caddy manual (não o Traefik/Domains do Dokploy)** — após o
-   deploy, adicione ao `Caddyfile` e recarregue:
-   ```
-   politica.fbautomacao.space {
-       reverse_proxy 127.0.0.1:3030
-   }
-   api.politica.fbautomacao.space {
-       reverse_proxy 127.0.0.1:8020
-   }
-   ```
-   ```bash
-   systemctl reload caddy
-   ```
+7. Deploy. As portas reservadas para este app são `8020` (backend) e `3040`
+   (frontend) — ver `docs/APPS_REGISTRADOS.md` na raiz do ecossistema antes
+   de mudar, para não colidir com outro app já registrado.
+8. Na aba **Domains** do recurso (Dokploy), registre os dois domínios
+   apontando para os serviços do compose:
+   - `politica.fbautomacao.space` → serviço `frontend`, porta `80`
+   - `api.politica.fbautomacao.space` → serviço `backend`, porta `8000`
 9. Teste o login em `https://politica.fbautomacao.space` com o
    `ADMIN_EMAIL`/`ADMIN_PASSWORD` configurados, e confirme no log do backend
    que a licença foi validada (`✅ Licença Kairos: ...`).

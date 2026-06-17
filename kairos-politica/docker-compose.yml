@@ -48,7 +48,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "3030:80"
+      - "3040:80"
     networks:
       - kairos_network
 
