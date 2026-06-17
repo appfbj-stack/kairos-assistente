@@ -16,7 +16,7 @@ import vpsRouter from "./vps/vps.js";
 const app = express();
 const PORT = Number(process.env.PORT) || 3010;
 
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "50mb" }));
 
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER;

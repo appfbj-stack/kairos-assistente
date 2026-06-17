@@ -1,4 +1,7 @@
 export function getApiUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") {
@@ -6,12 +9,13 @@ export function getApiUrl(): string {
     }
     return `http://${host}:3010/api`;
   }
-  return process.env.NEXT_PUBLIC_API_URL || "http://backend:3010/api";
+  return "http://backend:3010/api";
 }
 
 export async function fetchApi(path: string, options?: RequestInit) {
   const res = await fetch(`${getApiUrl()}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     ...options,
   });
   if (!res.ok) {
