@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: advocacia
+      POSTGRES_USER: advocacia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-advocacia_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U advocacia -d advocacia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kairos_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://advocacia:${POSTGRES_PASSWORD:-advocacia_secret}@postgres:5432/advocacia
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL:-}
+      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    ports:
+      - "8010:8000"
+    networks:
+      - kairos_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3020:80"
+    networks:
+      - kairos_network
+
+volumes:
+  postgres_data:
+
+networks:
+  kairos_network:
+    external: true
