@@ -36,6 +36,21 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return res.json();
 }
 
+async function reqBlob(path: string): Promise<Blob> {
+  const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) throw new Error("Erro ao baixar arquivo");
+  return res.blob();
+}
+
+async function reqUpload<T>(path: string, formData: FormData): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: formData });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Erro na requisição");
+  }
+  return res.json();
+}
+
 export interface User { id: number; name: string; email: string; role: string; tenant_id: number }
 export interface Cliente {
   id: string; tipo: string; nome: string; documento: string;
@@ -55,6 +70,10 @@ export interface Fatura {
   id: string; cliente_id: string; processo_id?: string | null; descricao: string;
   valor: number; data_emissao: string; data_vencimento: string; status: string;
   data_pagamento?: string | null; forma_pagamento?: string | null;
+}
+export interface Documento {
+  id: string; cliente_id: string; processo_id?: string | null; categoria: string;
+  nome_original: string; mime_type: string; tamanho: number; created_at: string;
 }
 
 export const api = {
@@ -108,6 +127,32 @@ export const api = {
     pagar: (id: string, data: any) => req<Fatura>(`/faturas/${id}/pagar`, { method: "POST", body: JSON.stringify(data) }),
     cancelar: (id: string) => req<Fatura>(`/faturas/${id}/cancelar`, { method: "POST" }),
     delete: (id: string) => req<void>(`/faturas/${id}`, { method: "DELETE" }),
+  },
+
+  documentos: {
+    list: (params?: { cliente_id?: string; processo_id?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.cliente_id) qs.set("cliente_id", params.cliente_id);
+      if (params?.processo_id) qs.set("processo_id", params.processo_id);
+      const s = qs.toString();
+      return req<Documento[]>(`/documentos${s ? `?${s}` : ""}`);
+    },
+    upload: (data: { cliente_id: string; processo_id?: string | null; categoria: string; file: File }) => {
+      const fd = new FormData();
+      fd.append("cliente_id", data.cliente_id);
+      if (data.processo_id) fd.append("processo_id", data.processo_id);
+      fd.append("categoria", data.categoria);
+      fd.append("file", data.file);
+      return reqUpload<Documento>("/documentos", fd);
+    },
+    download: async (doc: Documento) => {
+      const blob = await reqBlob(`/documentos/${doc.id}/download`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = doc.nome_original; a.click();
+      URL.revokeObjectURL(url);
+    },
+    delete: (id: string) => req<void>(`/documentos/${id}`, { method: "DELETE" }),
   },
 
   dashboard: {

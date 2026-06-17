@@ -41,7 +41,7 @@ async def lifespan(app: FastAPI):
     await _check_license()
     yield
 
-from app.routes import agenda, auth, clientes, dashboard, faturas, processos, users
+from app.routes import agenda, auth, clientes, dashboard, documentos, faturas, processos, users
 
 app = FastAPI(title="Kairos Advocacia API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -52,6 +52,7 @@ app.include_router(clientes.router)
 app.include_router(processos.router)
 app.include_router(agenda.router)
 app.include_router(faturas.router)
+app.include_router(documentos.router)
 app.include_router(dashboard.router)
 
 @app.get("/health")

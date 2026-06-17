@@ -33,6 +33,8 @@ services:
       KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - documentos_data:/app/storage
     ports:
       - "8010:8000"
     networks:
@@ -54,6 +56,7 @@ services:
 
 volumes:
   postgres_data:
+  documentos_data:
 
 networks:
   kairos_network:

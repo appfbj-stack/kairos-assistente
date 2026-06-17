@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, DateTime, ForeignKey, Float, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 
@@ -102,6 +102,21 @@ class Fatura(Base):
     forma_pagamento: Mapped[str | None] = mapped_column(String(30), nullable=True)  # pix | boleto | cartao | transferencia
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-# === Fase 2 restante (não implementado nesta versão): Documento (MinIO +
-# assinatura digital), Mensagem (chat interno), integração de IA jurídica e
-# login OAuth Google. Ver README.md.
+# ── Documento ────────────────────────────────────────────────────────────────
+class Documento(Base):
+    __tablename__ = "documentos"
+    id: Mapped[str] = mapped_column(String(50), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    cliente_id: Mapped[str] = mapped_column(ForeignKey("clientes.id"), index=True)
+    processo_id: Mapped[str | None] = mapped_column(ForeignKey("processos.id"), nullable=True)
+    categoria: Mapped[str] = mapped_column(String(30), default="outro")  # peticao | contrato | comprovante | documento_pessoal | outro
+    nome_original: Mapped[str] = mapped_column(String(255), default="")
+    nome_arquivo: Mapped[str] = mapped_column(String(80), default="")  # nome do arquivo em disco
+    mime_type: Mapped[str] = mapped_column(String(120), default="")
+    tamanho: Mapped[int] = mapped_column(Integer, default=0)
+    uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+# === Fase 2 restante (não implementado nesta versão): assinatura digital de
+# documentos, Mensagem (chat interno), integração de IA jurídica e login
+# OAuth Google. Ver README.md.

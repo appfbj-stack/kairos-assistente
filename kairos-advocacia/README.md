@@ -25,13 +25,17 @@ PostgreSQL no backend, Vite + React + Tailwind no frontend, multi-tenant
 - Dashboard com estatísticas agregadas (`/dashboard/stats`)
 - Financeiro (`/faturas`) — faturas com emissão, vencimento, pagamento e
   cancelamento; indicadores de "a receber" e "recebido no mês" no dashboard
+- Documentos (`/documentos`) — upload e download de arquivos (petições,
+  contratos, comprovantes etc.) vinculados a cliente e, opcionalmente, a um
+  processo; armazenamento local em disco (volume Docker `documentos_data`),
+  sem dependência de MinIO/S3
 - Portal do cliente "lite": usuários com `role=cliente` só veem os próprios
-  processos, compromissos e faturas
+  processos, compromissos, faturas e documentos
 - Verificação de licença Kairos Admin no login (fail-open se indisponível)
 
 ## Fora do escopo desta versão (Fase 2)
 
-- Gestão de documentos com upload/MinIO e assinatura digital
+- Assinatura digital de documentos
 - Chat interno entre equipe e cliente
 - Assistente de IA jurídica
 - Login social (OAuth Google)

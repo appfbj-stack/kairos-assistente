@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     KAIROS_ADMIN_URL: str = ""
     KAIROS_CLIENT_ID: str = ""
 
+    STORAGE_DIR: str = "storage"
+
     ADMIN_EMAIL: str = ""
     ADMIN_PASSWORD: str = ""
 
