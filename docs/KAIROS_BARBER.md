@@ -83,24 +83,36 @@ Não há seed automático (mesma convenção do restante do Core). Passo a passo
 
 ## Assistente conversacional de agendamento
 
-O PRD descreve o link de agendamento como "IA conversacional". Implementado
-com uma separação estrita entre **interpretar linguagem natural** (LLM) e
-**executar a ação** (rotas determinísticas já existentes):
+O PRD descreve o link de agendamento como "IA conversacional". O chat é hoje
+o fluxo principal da página pública: o cliente conversa, a IA reúne serviço,
+profissional, data, horário, nome e telefone, recapitula tudo e só depois que
+o cliente confirma explicitamente ("sim", "confirmo" etc.) o sistema cria o
+agendamento — sem precisar clicar em botões (o formulário por etapas continua
+disponível abaixo do chat como alternativa manual).
+
+Implementado com uma separação estrita entre **interpretar linguagem
+natural** (LLM) e **executar a ação** (rotas determinísticas já existentes):
 
 - `POST /api/barber/public/:slug/assistente` (`backend/src/barber/assistant.ts`,
   `runBookingAssistant()`) recebe o histórico da conversa, monta um prompt com
   os serviços/profissionais reais da empresa e pede ao `chatCompletion()` uma
   resposta em JSON estrito: `{"reply", "service_name", "professional_name",
-  "date"}`. O backend então resolve `service_name`/`professional_name` para
-  IDs reais via `SELECT ... WHERE name ILIKE ?` (só aceita correspondência
-  exata com algo cadastrado; caso contrário retorna `null`).
+  "date", "time", "client_name", "client_phone", "confirmado"}`. O backend
+  resolve `service_name`/`professional_name` para IDs reais via `SELECT ...
+  WHERE name ILIKE ?` (só aceita correspondência exata com algo cadastrado;
+  caso contrário retorna `null`). `confirmado` só deve vir `true` depois que
+  a IA recapitular o agendamento e o cliente confirmar — isso é reforçado via
+  prompt, não validado no backend (a IA pode errar; o pior caso é pedir
+  confirmação de novo, nunca criar algo sem checagem de disponibilidade).
 - A IA **nunca** chama `/disponibilidade` ou `/agendar` diretamente — ela só
-  propõe `service_id`/`professional_id`/`date`. O frontend
-  (`frontend/src/app/agendar/[slug]/page.tsx`) usa esses valores para
-  preencher o mesmo state (`serviceId`/`professionalId`/`date`) usado pelo
-  fluxo guiado por botões, que continua sendo o único caminho que verifica
-  disponibilidade e cria o agendamento — preservando a regra de não deixar um
-  LLM tomar ações de escrita sem validação determinística por trás.
+  propõe os campos acima. O frontend (`frontend/src/app/agendar/[slug]/page.tsx`)
+  acumula esses valores no mesmo state usado pelo fluxo manual e, somente
+  quando `confirmado: true` e todos os campos obrigatórios estão presentes,
+  chama `barberApi.public.agendar()` — a mesma rota determinística que valida
+  o horário contra a disponibilidade real e cria o registro. Se o horário não
+  estiver mais livre, a resposta de erro é repassada ao chat e a conversa
+  continua até um novo resumo ser confirmado. Isso preserva a regra de nunca
+  deixar um LLM tomar ações de escrita sem validação determinística por trás.
 
 ## Pendências conhecidas (fora do escopo desta primeira leva)
 
