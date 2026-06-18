@@ -3,6 +3,8 @@ export type CoreRole =
   | "ADMIN_EMPRESA"
   | "GERENTE"
   | "OPERADOR"
+  | "PROFISSIONAL"
+  | "ATENDENTE"
   | "USUARIO"
   | "CLIENTE";
 
@@ -11,6 +13,8 @@ export const CORE_ROLES: CoreRole[] = [
   "ADMIN_EMPRESA",
   "GERENTE",
   "OPERADOR",
+  "PROFISSIONAL",
+  "ATENDENTE",
   "USUARIO",
   "CLIENTE",
 ];
