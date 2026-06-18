@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.database import engine, SessionLocal
 from app.models import Base, Tenant, Usuario
 from app.services.license import verify_license
+from app.services.modules import seed_modules
 from app.utils import new_id
 
 Base.metadata.create_all(bind=engine)
@@ -40,10 +41,11 @@ async def _check_license():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _seed_admin()
+    seed_modules()
     await _check_license()
     yield
 
-from app.routes import agenda, auth, batismos, carteirinhas, congregacoes, dashboard, membros, obreiros, patrimonio, usuarios
+from app.routes import agenda, auth, batismos, carteirinhas, congregacoes, dashboard, membros, modules, obreiros, patrimonio, usuarios
 
 app = FastAPI(title="Kairos Sede Sorocaba API", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -60,6 +62,7 @@ app.include_router(patrimonio.router, prefix="/api")
 app.include_router(agenda.router, prefix="/api")
 app.include_router(carteirinhas.router, prefix="/api")
 app.include_router(batismos.router, prefix="/api")
+app.include_router(modules.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 
 @app.get("/api/health")

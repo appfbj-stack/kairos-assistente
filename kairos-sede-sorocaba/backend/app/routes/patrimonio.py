@@ -6,11 +6,11 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user
+from app.deps import congregacao_filter, get_current_user, require_module
 from app.models import Patrimonio, Usuario
 from app.utils import new_id
 
-router = APIRouter(prefix="/patrimonio", tags=["patrimonio"])
+router = APIRouter(prefix="/patrimonio", tags=["patrimonio"], dependencies=[Depends(require_module("patrimonio"))])
 
 class PatrimonioOut(BaseModel):
     id: str

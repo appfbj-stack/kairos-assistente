@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.deps import require_sede
+from app.deps import require_module, require_sede
 from app.models import PERFIS, Usuario
 from app.utils import new_id
 
-router = APIRouter(prefix="/usuarios", tags=["usuarios"], dependencies=[Depends(require_sede)])
+router = APIRouter(prefix="/usuarios", tags=["usuarios"], dependencies=[Depends(require_sede), Depends(require_module("usuarios"))])
 
 class UsuarioIn(BaseModel):
     email: str

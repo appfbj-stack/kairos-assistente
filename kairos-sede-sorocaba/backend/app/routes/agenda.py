@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user
+from app.deps import congregacao_filter, get_current_user, require_module
 from app.models import Evento, Usuario
 from app.utils import new_id, parse_datetime
 
-router = APIRouter(prefix="/agenda", tags=["agenda"])
+router = APIRouter(prefix="/agenda", tags=["agenda"], dependencies=[Depends(require_module("agenda"))])
 
 class EventoIn(BaseModel):
     titulo: str

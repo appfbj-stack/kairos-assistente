@@ -9,22 +9,27 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/membros', label: 'Membros', icon: Users },
-  { href: '/obreiros', label: 'Obreiros', icon: UserCheck },
-  { href: '/carteirinhas', label: 'Carteirinhas', icon: CreditCard },
-  { href: '/congregacoes', label: 'Congregações', icon: Building2, somentesSede: true },
-  { href: '/patrimonio', label: 'Patrimônio', icon: Package },
-  { href: '/agenda', label: 'Agenda', icon: Calendar },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, modulo: 'dashboard' },
+  { href: '/membros', label: 'Membros', icon: Users, modulo: 'membros' },
+  { href: '/obreiros', label: 'Obreiros', icon: UserCheck, modulo: 'obreiros' },
+  { href: '/carteirinhas', label: 'Carteirinhas', icon: CreditCard, modulo: 'carteirinhas' },
+  { href: '/congregacoes', label: 'Congregações', icon: Building2, modulo: 'congregacoes', somentesSede: true },
+  { href: '/patrimonio', label: 'Patrimônio', icon: Package, modulo: 'patrimonio' },
+  { href: '/agenda', label: 'Agenda', icon: Calendar, modulo: 'agenda' },
+
 ];
 
 export default function Layout({ children }) {
   const [sidebarAberta, setSidebarAberta] = useState(false);
-  const { usuario, logout, isSede } = useAuthStore();
+  const { usuario, logout, isSede, moduloAtivo } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const itens = NAV_ITEMS.filter(i => !i.somentesSede || isSede());
+  const itens = NAV_ITEMS.filter(i => {
+    if (i.somentesSede && !isSede()) return false;
+    if (!moduloAtivo(i.modulo)) return false;
+    return true;
+  });
 
   const handleLogout = () => {
     logout();

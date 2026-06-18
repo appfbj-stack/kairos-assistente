@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user, require_sede
+from app.deps import congregacao_filter, get_current_user, require_module, require_sede
 from app.models import Congregacao, Usuario
 from app.utils import new_id
 
-router = APIRouter(prefix="/congregacoes", tags=["congregacoes"])
+router = APIRouter(prefix="/congregacoes", tags=["congregacoes"], dependencies=[Depends(require_module("congregacoes"))])
 
 class CongregacaoIn(BaseModel):
     nome: str

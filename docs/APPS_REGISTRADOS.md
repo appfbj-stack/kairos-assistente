@@ -2,6 +2,12 @@
 
 Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado no Kairos Admin.
 
+> **Detalhe da integração ativa mais recente (sede-sorocaba)**: ver [`INTEGRACAO_SEDE_SOROCABA.md`](./INTEGRACAO_SEDE_SOROCABA.md). Inclui:
+> - IDs (app, cliente, licença) gerados via API
+> - Schema dedicado no Postgres Admin + user com permissões isoladas
+> - Como apps acessam o Admin (DNS Docker interno + Basic Auth)
+> - Como replicar a integração para outros apps (kairos-advocacia, kairos-politica, foto-agenda)
+
 ---
 
 ## Apps Ativos
@@ -9,7 +15,7 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | App | Slug | Tipo | Porta Frontend | Porta Backend | Repositório | Status |
 |---|---|---|---|---|---|---|
 | FotoAgenda Pro | `foto-agenda-pro` | Pro | 3015 | 8005 | [foto-agenda-v1](https://github.com/appfbj-stack/foto-agenda-v1) | ✅ Ativo |
-| Sede Sorocaba | `sede-sorocaba` | Pro | 3020 | 8010 | `kairos-sede-sorocaba/` (neste repositório, migrado de [sede-sorocaba](https://github.com/appfbj-stack/sede-sorocaba)) | ✅ Ativo |
+| Sede Sorocaba | `sede-sorocaba` | Pro | 3020 | 8010 | `kairos-sede-sorocaba/` (neste repositório, migrado de [sede-sorocaba](https://github.com/appfbj-stack/sede-sorocaba)) | ✅ Ativo (containers up, licença validada, pendente: HTTPS Dokploy + redirect Google) |
 | Orçamentos Vidraçaria | `vidra-aria-top` | Lite | 3025 | — | [vidra-aria-top](https://github.com/appfbj-stack/vidra-aria-top) | ✅ Ativo |
 | Imobiliária Inteligente | `imobiliaria-inteligente` | Pro | 3030 | — | [imobiliaria-inteligente](https://github.com/appfbj-stack/imobiliaria-inteligente) | ✅ Ativo |
 | Agenda Mecânica Pro | `agenda-mecanica-pro` | Pro | 3035 | 8015 | [agenda-mecanica](https://github.com/appfbj-stack/agenda-mecanica) | ✅ Ativo |

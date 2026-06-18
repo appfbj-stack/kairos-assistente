@@ -7,6 +7,21 @@ def utcnow(): return datetime.now(timezone.utc)
 
 PERFIS = ["sede", "pastor"]
 
+# ── Module (catálogo de módulos disponíveis no ecossistema Kairos) ─────────
+class Module(Base):
+    __tablename__ = "modules"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    slug: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    nome: Mapped[str] = mapped_column(String(255))
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+class TenantModule(Base):
+    __tablename__ = "tenant_modules"
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), primary_key=True)
+    module_slug: Mapped[str] = mapped_column(String(100), primary_key=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+
 # ── Tenant (cliente da plataforma Kairos, ex: "OBPC Sorocaba") ──────────────
 class Tenant(Base):
     __tablename__ = "tenants"

@@ -13,6 +13,7 @@ import Patrimonio from './pages/patrimonio/Patrimonio';
 import Agenda from './pages/agenda/Agenda';
 import Carteirinhas from './pages/carteirinhas/Carteirinhas';
 
+
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, retry: 1 } } });
 
 function RotaProtegida({ children }) {
@@ -32,9 +33,16 @@ function SomentesSede({ children }) {
   return children;
 }
 
+function RotaModulo({ slug, children }) {
+  const { moduloAtivo } = useAuthStore();
+  if (!moduloAtivo(slug)) return <Navigate to="/dashboard" replace />;
+  return children;
+}
+
 export default function App() {
-  const { carregarUsuario } = useAuthStore();
+  const { carregarUsuario, carregarModulos } = useAuthStore();
   useEffect(() => { carregarUsuario(); }, []);
+  useEffect(() => { carregarModulos(); }, []);
 
   return (
     <QueryClientProvider client={qc}>
@@ -53,13 +61,14 @@ export default function App() {
             </div>
           } />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard"    element={<RotaProtegida><Dashboard /></RotaProtegida>} />
-          <Route path="/membros"      element={<RotaProtegida><Membros /></RotaProtegida>} />
-          <Route path="/obreiros"     element={<RotaProtegida><Obreiros /></RotaProtegida>} />
-          <Route path="/carteirinhas" element={<RotaProtegida><Carteirinhas /></RotaProtegida>} />
-          <Route path="/congregacoes" element={<RotaProtegida><SomentesSede><Congregacoes /></SomentesSede></RotaProtegida>} />
-          <Route path="/patrimonio"   element={<RotaProtegida><Patrimonio /></RotaProtegida>} />
-          <Route path="/agenda"       element={<RotaProtegida><Agenda /></RotaProtegida>} />
+          <Route path="/dashboard"    element={<RotaProtegida><RotaModulo slug="dashboard"><Dashboard /></RotaModulo></RotaProtegida>} />
+          <Route path="/membros"      element={<RotaProtegida><RotaModulo slug="membros"><Membros /></RotaModulo></RotaProtegida>} />
+          <Route path="/obreiros"     element={<RotaProtegida><RotaModulo slug="obreiros"><Obreiros /></RotaModulo></RotaProtegida>} />
+          <Route path="/carteirinhas" element={<RotaProtegida><RotaModulo slug="carteirinhas"><Carteirinhas /></RotaModulo></RotaProtegida>} />
+          <Route path="/congregacoes" element={<RotaProtegida><SomentesSede><RotaModulo slug="congregacoes"><Congregacoes /></RotaModulo></SomentesSede></RotaProtegida>} />
+          <Route path="/patrimonio"   element={<RotaProtegida><RotaModulo slug="patrimonio"><Patrimonio /></RotaModulo></RotaProtegida>} />
+          <Route path="/agenda"       element={<RotaProtegida><RotaModulo slug="agenda"><Agenda /></RotaModulo></RotaProtegida>} />
+
           <Route path="*"             element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>

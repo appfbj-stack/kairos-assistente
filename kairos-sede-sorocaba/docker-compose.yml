@@ -1,41 +1,24 @@
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: sede_sorocaba
-      POSTGRES_USER: sede_sorocaba
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sede_sorocaba_secret}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sede_sorocaba -d sede_sorocaba"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - kairos_network
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://sede_sorocaba:${POSTGRES_PASSWORD:-sede_sorocaba_secret}@postgres:5432/sede_sorocaba
-      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
-      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL:-}
-      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID:-}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
-      FRONTEND_URL: ${FRONTEND_URL:-}
+      DATABASE_URL: postgresql://sede_sorocaba:${POSTGRES_PASSWORD}@kairos-assistente-kairos-assistente-kgavlc-postgres-1:5432/kairos
+      DATABASE_SCHEMA: sede_sorocaba
+      SECRET_KEY: ${SECRET_KEY}
+      KAIROS_ADMIN_URL: ${KAIROS_ADMIN_URL}
+      KAIROS_ADMIN_BASIC_USER: ${KAIROS_ADMIN_BASIC_USER}
+      KAIROS_ADMIN_BASIC_PASSWORD: ${KAIROS_ADMIN_BASIC_PASSWORD}
+      KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      FRONTEND_URL: ${FRONTEND_URL}
     volumes:
       - uploads_data:/app/uploads
     ports:
@@ -56,7 +39,6 @@ services:
       - kairos_network
 
 volumes:
-  postgres_data:
   uploads_data:
 
 networks:

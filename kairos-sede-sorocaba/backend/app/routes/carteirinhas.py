@@ -6,11 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user
+from app.deps import congregacao_filter, get_current_user, require_module
 from app.models import Carteirinha, Congregacao, Membro, Usuario
 from app.utils import new_id
 
-router = APIRouter(prefix="/carteirinhas", tags=["carteirinhas"])
+router = APIRouter(prefix="/carteirinhas", tags=["carteirinhas"], dependencies=[Depends(require_module("carteirinhas"))])
 
 class EmitirIn(BaseModel):
     membro_id: str

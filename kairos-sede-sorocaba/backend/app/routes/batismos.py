@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import aliased, Session
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user
+from app.deps import congregacao_filter, get_current_user, require_module
 from app.models import Batismo, Membro, Usuario
 from app.utils import new_id, parse_date
 
-router = APIRouter(prefix="/batismos", tags=["batismos"])
+router = APIRouter(prefix="/batismos", tags=["batismos"], dependencies=[Depends(require_module("batismos"))])
 
 class BatismoIn(BaseModel):
     membro_id: str

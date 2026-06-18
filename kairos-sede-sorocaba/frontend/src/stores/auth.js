@@ -8,6 +8,7 @@ export const useAuthStore = create(
       usuario: null,
       token: null,
       carregando: false,
+      modulos: null,
 
       login: (token) => {
         localStorage.setItem('kairos_token', token);
@@ -33,9 +34,25 @@ export const useAuthStore = create(
         }
       },
 
+      carregarModulos: async () => {
+        try {
+          const { data } = await api.get('/modules');
+          set({ modulos: data });
+        } catch {
+          set({ modulos: [] });
+        }
+      },
+
+      moduloAtivo: (slug) => {
+        const { modulos } = get();
+        if (!modulos) return false;
+        const m = modulos.find((m) => m.slug === slug);
+        return m?.active === true;
+      },
+
       logout: () => {
         localStorage.removeItem('kairos_token');
-        set({ usuario: null, token: null });
+        set({ usuario: null, token: null, modulos: null });
       },
 
       isSede: () => get().usuario?.perfil === 'sede',

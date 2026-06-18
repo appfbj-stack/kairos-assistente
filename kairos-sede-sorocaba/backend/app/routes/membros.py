@@ -8,11 +8,11 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user
+from app.deps import congregacao_filter, get_current_user, require_module
 from app.models import Membro, Usuario
 from app.utils import new_id, parse_date
 
-router = APIRouter(prefix="/membros", tags=["membros"])
+router = APIRouter(prefix="/membros", tags=["membros"], dependencies=[Depends(require_module("membros"))])
 
 class MembroOut(BaseModel):
     id: str

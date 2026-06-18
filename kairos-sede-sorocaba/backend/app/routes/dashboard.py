@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import extract
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.deps import congregacao_filter, get_current_user
+from app.deps import congregacao_filter, get_current_user, require_module
 from app.models import Carteirinha, Congregacao, Evento, Membro, Obreiro, Patrimonio, Usuario
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/dashboard", tags=["dashboard"], dependencies=[Depends(require_module("dashboard"))])
 
 @router.get("")
 def stats(db: Session = Depends(get_db), cu: Usuario = Depends(get_current_user),
