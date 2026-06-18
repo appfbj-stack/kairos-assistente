@@ -2,8 +2,16 @@ import { Router, Request, Response } from "express";
 import { queryAll, queryOne, runSql } from "../database/database.js";
 import { chatCompletion } from "../llm/llm.js";
 import crypto from "crypto";
+import { requireCoreAuth, scopeEmpresaId } from "../core/auth.js";
 
 const router = Router();
+
+function empresaFilter(req: Request): string {
+  const e = scopeEmpresaId(req, (req.query.empresa_id as string) || (req.body.empresa_id as string) || null);
+  return e ?? "";
+}
+
+router.use(requireCoreAuth);
 
 const SYSTEM_PROMPT = `Você é o Kairos, um assistente pessoal inteligente.
 Você ajuda com: conversas, lembretes, agenda, memória e informações.
@@ -36,28 +44,44 @@ Você pode consultar esses dados se o usuário perguntar sobre clientes, licenç
   }
 }
 
-router.get("/conversations", async (_req: Request, res: Response) => {
-  const rows = await queryAll("SELECT * FROM conversations ORDER BY updated_at DESC");
+router.get("/conversations", async (req: Request, res: Response) => {
+  const eid = empresaFilter(req);
+  const sql = eid
+    ? "SELECT * FROM conversations WHERE empresa_id = ? ORDER BY updated_at DESC"
+    : "SELECT * FROM conversations ORDER BY updated_at DESC";
+  const params = eid ? [eid] : [];
+  const rows = await queryAll(sql, params);
   res.json(rows);
 });
 
 router.post("/conversations", async (req: Request, res: Response) => {
   const id = crypto.randomUUID();
   const title = req.body.title || "Nova conversa";
-  await runSql("INSERT INTO conversations (id, title) VALUES (?, ?)", [id, title]);
-  res.json({ id, title });
+  const eid = empresaFilter(req);
+  if (eid) {
+    await runSql("INSERT INTO conversations (id, title, empresa_id) VALUES (?, ?, ?)", [id, title, eid]);
+  } else {
+    await runSql("INSERT INTO conversations (id, title) VALUES (?, ?)", [id, title]);
+  }
+  res.json({ id, title, empresa_id: eid || null });
 });
 
 router.get("/conversations/:id", async (req: Request, res: Response) => {
-  const conv = await queryOne("SELECT * FROM conversations WHERE id = ?", [req.params.id]);
+  const eid = empresaFilter(req);
+  const conv = eid
+    ? await queryOne("SELECT * FROM conversations WHERE id = ? AND empresa_id = ?", [req.params.id, eid])
+    : await queryOne("SELECT * FROM conversations WHERE id = ?", [req.params.id]);
   if (!conv) return res.status(404).json({ error: "Conversa não encontrada" });
   const messages = await queryAll("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at", [req.params.id]);
   res.json({ ...conv, messages });
 });
 
 router.delete("/conversations/:id", async (req: Request, res: Response) => {
-  await runSql("DELETE FROM messages WHERE conversation_id = ?", [req.params.id]);
-  await runSql("DELETE FROM conversations WHERE id = ?", [req.params.id]);
+  const eid = empresaFilter(req);
+  const params = eid ? [req.params.id, eid] : [req.params.id];
+  const where = eid ? "id = ? AND empresa_id = ?" : "id = ?";
+  await runSql(`DELETE FROM messages WHERE conversation_id = ?`, [req.params.id]);
+  await runSql(`DELETE FROM conversations WHERE ${where}`, params);
   res.json({ ok: true });
 });
 
@@ -65,11 +89,16 @@ router.post("/send", async (req: Request, res: Response) => {
   try {
     const { conversation_id, message } = req.body;
     if (!message) return res.status(400).json({ error: "Mensagem obrigatória" });
+    const eid = empresaFilter(req);
 
     let convId = conversation_id;
     if (!convId) {
       convId = crypto.randomUUID();
-      await runSql("INSERT INTO conversations (id, title) VALUES (?, ?)", [convId, message.slice(0, 50)]);
+      if (eid) {
+        await runSql("INSERT INTO conversations (id, title, empresa_id) VALUES (?, ?, ?)", [convId, message.slice(0, 50), eid]);
+      } else {
+        await runSql("INSERT INTO conversations (id, title) VALUES (?, ?)", [convId, message.slice(0, 50)]);
+      }
     }
 
     await runSql("INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, 'user', ?)", [
@@ -94,7 +123,7 @@ router.post("/send", async (req: Request, res: Response) => {
     ]);
     await runSql("UPDATE conversations SET updated_at = NOW() WHERE id = ?", [convId]);
 
-    res.json({ conversation_id: convId, message: reply });
+    res.json({ conversation_id: convId, message: reply, empresa_id: eid || null });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
