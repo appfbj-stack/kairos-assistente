@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Kairos Barber: link público de agendamento (clientes finais) e painel da
+  // equipe (login próprio via JWT do Core) não usam o Basic Auth do Admin.
+  if (pathname.startsWith("/agendar") || pathname.startsWith("/barber")) {
+    return NextResponse.next();
+  }
+
   const user = process.env.BASIC_AUTH_USER;
   const password = process.env.BASIC_AUTH_PASSWORD;
 

@@ -1,0 +1,226 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { Scissors, Clock, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
+import { barberApi } from "@/services/barberApi";
+import { formatCurrency } from "@/lib/utils";
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export default function AgendarPage() {
+  const params = useParams();
+  const slug = String(params.slug);
+
+  const [empresa, setEmpresa] = useState<{ name: string } | null>(null);
+  const [services, setServices] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  const [serviceId, setServiceId] = useState("");
+  const [professionalId, setProfessionalId] = useState("");
+  const [date, setDate] = useState(todayStr());
+  const [slots, setSlots] = useState<string[]>([]);
+  const [time, setTime] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    barberApi.public
+      .info(slug)
+      .then((res) => {
+        setEmpresa(res.empresa);
+        setServices(res.services);
+        setProfessionals(res.professionals);
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  useEffect(() => {
+    setTime("");
+    setSlots([]);
+    if (!serviceId || !professionalId) return;
+    barberApi.public
+      .disponibilidade(slug, professionalId, date, serviceId)
+      .then((res) => setSlots(res.slots || []))
+      .catch(() => setSlots([]));
+  }, [slug, serviceId, professionalId, date]);
+
+  async function handleSubmit() {
+    setError("");
+    if (!name.trim() || !phone.trim() || !time) return;
+    setSubmitting(true);
+    try {
+      await barberApi.public.agendar(slug, {
+        client_name: name,
+        client_phone: phone,
+        professional_id: professionalId,
+        service_id: serviceId,
+        scheduled_at: `${date}T${time}:00`,
+      });
+      setDone(true);
+    } catch (e: any) {
+      setError(e.message || "Não foi possível agendar. Tente outro horário.");
+    }
+    setSubmitting(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <div className="w-8 h-8 border-2 border-kairos-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4 text-center">
+        <p className="text-gray-400">Barbearia não encontrada.</p>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4 text-center">
+        <div>
+          <CheckCircle2 size={48} className="text-green-400 mx-auto mb-4" />
+          <h1 className="text-white text-lg font-bold mb-2">Agendamento confirmado!</h1>
+          <p className="text-gray-400 text-sm">
+            {date.split("-").reverse().join("/")} às {time} em {empresa?.name}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedService = services.find((s) => s.id === serviceId);
+  const selectedProfessional = professionals.find((p) => p.id === professionalId);
+  const canSubmit = serviceId && professionalId && time && name.trim() && phone.trim();
+
+  return (
+    <div className="min-h-screen bg-gray-950 px-4 py-8">
+      <div className="max-w-md mx-auto">
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-12 h-12 bg-kairos-500 rounded-xl flex items-center justify-center mb-3">
+            <Scissors size={22} className="text-white" />
+          </div>
+          <h1 className="text-white text-lg font-bold">{empresa?.name}</h1>
+          <p className="text-gray-400 text-sm">Agende seu horário</p>
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">
+          <div>
+            <p className="text-xs text-gray-400 mb-2">1. Escolha o serviço</p>
+            <div className="space-y-2">
+              {services.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setServiceId(s.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                    serviceId === s.id ? "bg-kairos-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  <span>{s.name}</span>
+                  <span className="text-xs opacity-80">
+                    {s.duration_minutes}min · {formatCurrency(s.price)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {serviceId && (
+            <div>
+              <p className="text-xs text-gray-400 mb-2">2. Escolha o profissional</p>
+              <div className="space-y-2">
+                {professionals.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setProfessionalId(p.id)}
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm text-left transition-colors ${
+                      professionalId === p.id ? "bg-kairos-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {professionalId && (
+            <div>
+              <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                <CalendarIcon size={12} /> 3. Escolha a data e o horário
+              </p>
+              <input
+                type="date"
+                min={todayStr()}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-kairos-500"
+              />
+              {slots.length === 0 ? (
+                <p className="text-xs text-gray-500">Sem horários livres nesta data. Tente outro dia.</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {slots.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setTime(s)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        time === s ? "bg-kairos-500 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                      }`}
+                    >
+                      <Clock size={11} />
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {time && (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-400">4. Seus dados</p>
+              <input
+                placeholder="Seu nome"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-kairos-500"
+              />
+              <input
+                placeholder="WhatsApp"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-kairos-500"
+              />
+            </div>
+          )}
+
+          {error && <p className="text-red-400 text-xs">{error}</p>}
+
+          {selectedService && selectedProfessional && time && (
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit || submitting}
+              className="w-full px-4 py-3 bg-kairos-500 text-white rounded-lg text-sm font-medium hover:bg-kairos-600 transition-colors active:scale-95 disabled:opacity-40"
+            >
+              {submitting ? "Agendando..." : `Confirmar agendamento — ${formatCurrency(selectedService.price)}`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
