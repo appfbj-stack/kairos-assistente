@@ -335,6 +335,14 @@ const migrations = [
       CREATE INDEX IF NOT EXISTS idx_barber_appointments_slot ON barber_appointments(empresa_id, professional_id, scheduled_at);
     `,
   },
+  {
+    name: "007_barber_appointments_slot_exclusivity",
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_barber_appointments_active_slot
+        ON barber_appointments(professional_id, scheduled_at)
+        WHERE status != 'cancelado';
+    `,
+  },
 ];
 
 export async function runMigrations() {

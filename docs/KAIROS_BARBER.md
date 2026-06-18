@@ -23,6 +23,16 @@ CASCADE`):
   `duration_minutes` congelados no momento do agendamento (snapshot do
   serviço, para não distorcer relatórios se o preço do serviço mudar depois)
 
+A migração `007_barber_appointments_slot_exclusivity` cria um índice único
+parcial em `(professional_id, scheduled_at) WHERE status != 'cancelado'` —
+a checagem de disponibilidade antes do INSERT (`getAvailableSlots`) é só a
+primeira linha de defesa; esse índice é quem garante, no banco, que duas
+reservas concorrentes para o mesmo profissional/horário não passem ambas.
+As rotas de criação/atualização de agendamento (`POST/PATCH
+/api/barber/appointments`, `POST /api/barber/public/:slug/agendar`)
+capturam a violação (código `23505`) e respondem `409` em vez de deixar o
+erro do Postgres subir.
+
 A migração `005_core_roles_profissional_atendente` estende o enum de
 `core_users.role` para incluir `PROFISSIONAL` e `ATENDENTE` — isso é uma
 extensão da plataforma inteira (não só do Barber), documentada aqui porque

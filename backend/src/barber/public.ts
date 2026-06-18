@@ -130,12 +130,26 @@ router.post("/:slug/agendar", async (req: Request, res: Response) => {
   }
 
   const id = crypto.randomUUID();
-  await runSql(
-    `INSERT INTO barber_appointments
-      (id, empresa_id, client_id, professional_id, service_id, scheduled_at, duration_minutes, price)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, empresaId, clientId, professional_id, service_id, scheduled_at, (service as any).duration_minutes, (service as any).price]
-  );
+  try {
+    await runSql(
+      `INSERT INTO barber_appointments
+        (id, empresa_id, client_id, professional_id, service_id, scheduled_at, duration_minutes, price)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, empresaId, clientId, professional_id, service_id, scheduled_at, (service as any).duration_minutes, (service as any).price]
+    );
+  } catch (err: any) {
+    if (err.code === "23505") {
+      const freshSlots = await getAvailableSlots(
+        empresaId,
+        String(professional_id),
+        date,
+        Number((service as any).duration_minutes),
+        professional as any
+      );
+      return res.status(409).json({ error: "Horário indisponível", slots_disponiveis: freshSlots });
+    }
+    throw err;
+  }
 
   res.status(201).json({ id, scheduled_at, status: "agendado" });
 });

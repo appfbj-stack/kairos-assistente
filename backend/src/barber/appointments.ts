@@ -80,11 +80,11 @@ router.get("/dashboard", requireCoreAuth, async (req: Request, res: Response) =>
     [empresaId]
   );
   const semana = await queryOne(
-    "SELECT COUNT(*) as total FROM barber_appointments WHERE empresa_id = ? AND scheduled_at >= date_trunc('week', NOW()) AND status != 'cancelado'",
+    "SELECT COUNT(*) as total FROM barber_appointments WHERE empresa_id = ? AND scheduled_at::timestamp >= date_trunc('week', NOW()) AND status != 'cancelado'",
     [empresaId]
   );
   const faturamentoMes = await queryOne(
-    "SELECT COALESCE(SUM(price),0) as total FROM barber_appointments WHERE empresa_id = ? AND status = 'concluido' AND scheduled_at >= date_trunc('month', NOW())",
+    "SELECT COALESCE(SUM(price),0) as total FROM barber_appointments WHERE empresa_id = ? AND status = 'concluido' AND scheduled_at::timestamp >= date_trunc('month', NOW())",
     [empresaId]
   );
   const porStatus = await queryAll(
@@ -129,22 +129,29 @@ router.post(
     if (!service) return res.status(404).json({ error: "Serviço não encontrado" });
 
     const id = crypto.randomUUID();
-    await runSql(
-      `INSERT INTO barber_appointments
-        (id, empresa_id, client_id, professional_id, service_id, scheduled_at, duration_minutes, price, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        empresaId,
-        client_id,
-        professional_id,
-        service_id,
-        scheduled_at,
-        (service as any).duration_minutes,
-        (service as any).price,
-        notes || "",
-      ]
-    );
+    try {
+      await runSql(
+        `INSERT INTO barber_appointments
+          (id, empresa_id, client_id, professional_id, service_id, scheduled_at, duration_minutes, price, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          empresaId,
+          client_id,
+          professional_id,
+          service_id,
+          scheduled_at,
+          (service as any).duration_minutes,
+          (service as any).price,
+          notes || "",
+        ]
+      );
+    } catch (err: any) {
+      if (err.code === "23505") {
+        return res.status(409).json({ error: "Este profissional já tem um agendamento ativo nesse horário" });
+      }
+      throw err;
+    }
     res.status(201).json({ id, empresa_id: empresaId, scheduled_at, status: "agendado" });
   }
 );
@@ -166,15 +173,22 @@ router.patch(
       return res.status(400).json({ error: "status inválido" });
     }
 
-    await runSql(
-      `UPDATE barber_appointments SET
-        scheduled_at = COALESCE(?, scheduled_at),
-        status = COALESCE(?, status),
-        notes = COALESCE(?, notes),
-        updated_at = NOW()
-       WHERE id = ?`,
-      [scheduled_at ?? null, status ?? null, notes ?? null, req.params.id]
-    );
+    try {
+      await runSql(
+        `UPDATE barber_appointments SET
+          scheduled_at = COALESCE(?, scheduled_at),
+          status = COALESCE(?, status),
+          notes = COALESCE(?, notes),
+          updated_at = NOW()
+         WHERE id = ?`,
+        [scheduled_at ?? null, status ?? null, notes ?? null, req.params.id]
+      );
+    } catch (err: any) {
+      if (err.code === "23505") {
+        return res.status(409).json({ error: "Este profissional já tem um agendamento ativo nesse horário" });
+      }
+      throw err;
+    }
     res.json({ ok: true });
   }
 );
