@@ -16,8 +16,11 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Kairos Advocacia | `kairos-advocacia` | Pro | 3045 | 8025 | `kairos-advocacia/` (neste repositório) | 🚧 Não deployado |
 | Kairos Política | `kairos-politica` | Pro | 3040 | 8020 | `kairos-politica/` (neste repositório) | 🚧 Não deployado |
 | Fotografia (Kairos) | `fotoagenda` | Pro | 3050 | 8030 | `foto-agenda/` (neste repositório — build próprio, distinto do FotoAgenda Pro externo acima) | 🚧 Não deployado |
+| Kairos Barber | `kairos-barber` | Módulo embutido | — | — (rotas em `backend/src/barber/`, dentro do Kairos Admin) | 🚧 Não deployado |
 
 > **Fotografia (Kairos):** o código em `foto-agenda/backend/app/main.py` já manda `app_slug=fotoagenda` fixo na verificação de licença. Ao registrar este app no Kairos Admin (passo 2 abaixo), o slug **precisa ser exatamente `fotoagenda`** — não confundir com o slug `foto-agenda-pro` do app externo já ativo.
+
+> **Kairos Barber:** diferente de todos os apps acima, não é um satélite com backend/frontend/banco próprios — é um módulo embutido no próprio Kairos Admin (`backend/src/barber/`), seguindo a regra do PRD de não criar infraestrutura separada. Não ocupa porta nem entra no `docker-compose.yml`. Ver `docs/KAIROS_BARBER.md` para o modelo de dados, rotas e como ativar o módulo para uma empresa.
 
 ---
 

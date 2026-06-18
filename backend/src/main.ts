@@ -11,6 +11,7 @@ import adminRouter from "./admin/admin.js";
 import licenseRouter from "./admin/license.js";
 import backupRouter from "./admin/backup.js";
 import coreRouter, { expireOverdueTrials, bootstrapSuperAdmin } from "./core/index.js";
+import barberRouter from "./barber/index.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3010;
@@ -21,9 +22,11 @@ const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD || "kairos123";
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "50mb" }));
 
-// Basic Auth para todas as rotas EXCETO /api/core, /api/chat, /api/agenda, /api/memory, /api/settings (que usam JWT proprio)
+// Basic Auth para todas as rotas EXCETO /api/core, /api/chat, /api/agenda,
+// /api/memory, /api/settings (usam JWT proprio do Core) e /api/barber (idem,
+// e /api/barber/public e' o link de agendamento sem login)
 app.use((req: any, res: any, next: any) => {
-    if (req.path.startsWith("/api/core") || req.path.startsWith("/api/chat") || req.path.startsWith("/api/agenda") || req.path.startsWith("/api/memory") || req.path.startsWith("/api/settings")) return next();
+    if (req.path.startsWith("/api/core") || req.path.startsWith("/api/chat") || req.path.startsWith("/api/agenda") || req.path.startsWith("/api/memory") || req.path.startsWith("/api/settings") || req.path.startsWith("/api/barber")) return next();
     if (req.path === "/api/health" || req.path === "/api") return next();
 
           const auth = req.headers.authorization;
@@ -49,6 +52,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/license", licenseRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/core", coreRouter);
+app.use("/api/barber", barberRouter);
 
 app.get("/api/health", async (_req: any, res: any) => {
     await getDb();

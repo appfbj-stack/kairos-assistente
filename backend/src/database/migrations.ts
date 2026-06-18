@@ -246,19 +246,102 @@ const migrations = [
         UNIQUE(empresa_id, key)
       );
     `,
-    {
-        name: "004_empresa_id_nos_modulos",
-        sql: `
-              ALTER TABLE conversations ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                    ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                          ALTER TABLE memory_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                                ALTER TABLE settings ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                                      CREATE INDEX IF NOT EXISTS idx_conversations_empresa ON conversations(empresa_id);
-                                            CREATE INDEX IF NOT EXISTS idx_agenda_empresa ON agenda_items(empresa_id);
-                                                  CREATE INDEX IF NOT EXISTS idx_memory_empresa ON memory_items(empresa_id);
-                                                        CREATE INDEX IF NOT EXISTS idx_settings_empresa ON settings(empresa_id)
-                                                            `,
   },
+  {
+    name: "004_empresa_id_nos_modulos",
+    sql: `
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      ALTER TABLE memory_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_conversations_empresa ON conversations(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_agenda_empresa ON agenda_items(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_memory_empresa ON memory_items(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_settings_empresa ON settings(empresa_id);
+    `,
+  },
+  {
+    // Estende o enum de papéis do Core para suportar módulos com hierarquia de
+    // atendimento (ex: Kairos Barber: PROFISSIONAL atende, ATENDENTE recepciona).
+    // Vale para toda a plataforma, não só para um módulo específico.
+    name: "005_core_roles_profissional_atendente",
+    sql: `
+      ALTER TABLE core_users DROP CONSTRAINT IF EXISTS core_users_role_check;
+      ALTER TABLE core_users ADD CONSTRAINT core_users_role_check CHECK (role IN ('SUPER_ADMIN','ADMIN_EMPRESA','GERENTE','OPERADOR','PROFISSIONAL','ATENDENTE','USUARIO','CLIENTE'));
+    `,
+  },
+  {
+    // Kairos Barber: módulo embutido na própria plataforma (sem backend/DB/auth
+    // próprios), seguindo a regra do PRD. Todas as tabelas são empresa_id-scoped
+    // e reutilizam core_users (via professional.user_id) para login de equipe.
+    name: "006_kairos_barber",
+    sql: `
+      CREATE TABLE IF NOT EXISTS barber_services (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL DEFAULT 30,
+        price FLOAT NOT NULL DEFAULT 0,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS barber_professionals (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        user_id TEXT REFERENCES core_users(id) ON DELETE SET NULL,
+        name TEXT NOT NULL,
+        phone TEXT DEFAULT '',
+        working_days TEXT NOT NULL DEFAULT '1,2,3,4,5,6',
+        working_start TEXT NOT NULL DEFAULT '09:00',
+        working_end TEXT NOT NULL DEFAULT '19:00',
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE TABLE IF NOT EXISTS barber_clients (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        email TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS},
+        UNIQUE(empresa_id, phone)
+      );
+
+      CREATE TABLE IF NOT EXISTS barber_appointments (
+        id TEXT PRIMARY KEY,
+        empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+        client_id TEXT NOT NULL REFERENCES barber_clients(id) ON DELETE CASCADE,
+        professional_id TEXT NOT NULL REFERENCES barber_professionals(id) ON DELETE CASCADE,
+        service_id TEXT NOT NULL REFERENCES barber_services(id) ON DELETE CASCADE,
+        scheduled_at TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        price FLOAT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'agendado' CHECK(status IN ('agendado','confirmado','concluido','cancelado','faltou')),
+        notes TEXT DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT ${TS},
+        updated_at TEXT NOT NULL DEFAULT ${TS}
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_barber_services_empresa ON barber_services(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_barber_professionals_empresa ON barber_professionals(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_barber_clients_empresa ON barber_clients(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_barber_appointments_empresa ON barber_appointments(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_barber_appointments_slot ON barber_appointments(empresa_id, professional_id, scheduled_at);
+    `,
+  },
+  {
+    name: "007_barber_appointments_slot_exclusivity",
+    sql: `
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_barber_appointments_active_slot
+        ON barber_appointments(professional_id, scheduled_at)
+        WHERE status != 'cancelado';
+    `,
   },
 ];
 

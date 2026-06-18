@@ -5,6 +5,7 @@ dist/
 .env.local
 *.db
 *.log
+*.tsbuildinfo
 __pycache__/
 *.pyc
 .venv/
