@@ -61,14 +61,25 @@ Não há seed automático (mesma convenção do restante do Core). Passo a passo
 2. `POST /api/core/modules/empresas/:empresaId/:moduleId` com `{"active": true}` — uma vez por empresa que for usar o Barber.
 3. Criar usuários da empresa com `role` `ADMIN_EMPRESA`/`GERENTE`/`PROFISSIONAL`/`ATENDENTE` via `POST /api/core/users`.
 4. Cadastrar serviços e profissionais via `/api/barber/services` e `/api/barber/professionals`.
-5. Compartilhar `https://.../agendar/{slug}` com os clientes.
+5. Fazer login do usuário criado em `https://.../barber/login`.
+6. Compartilhar `https://.../agendar/{slug}` com os clientes (ex: link fixo no WhatsApp Business da barbearia).
+
+## Frontend
+
+- **Painel da equipe** (`frontend/src/app/barber/*`): login próprio via JWT
+  do Core (`/barber/login`), dashboard, agenda, clientes, serviços,
+  profissionais e IA do Gestor. Sessão guardada em `localStorage`
+  (`kairos_barber_token`/`kairos_barber_user`) — ver
+  `frontend/src/hooks/use-barber-auth.ts` e `frontend/src/services/barberApi.ts`.
+  Distinto do painel interno do Kairos Admin (Basic Auth single-tenant).
+- **Página pública de agendamento** (`frontend/src/app/agendar/[slug]/page.tsx`):
+  sem login, mobile-first, fluxo serviço → profissional → data/horário →
+  dados do cliente → confirmação.
+- `frontend/src/middleware.ts` isenta `/barber*` e `/agendar*` do Basic Auth
+  do Admin (cada um tem seu próprio mecanismo de acesso — JWT ou nenhum).
 
 ## Pendências conhecidas (fora do escopo desta primeira leva)
 
-- **Frontend tenant-facing**: hoje só existe a API. O painel da barbearia
-  (login da equipe via JWT do Core) e a página pública de agendamento
-  precisam ser construídos no Next.js (`frontend/`) — distintos do painel
-  interno do Kairos Admin, que usa Basic Auth single-tenant.
 - **Notificações (WhatsApp/SMS)**: o PRD pede lembretes automáticos. Não há
   integração configurada (Twilio, WhatsApp Business API etc.) — fora do
   escopo até essas credenciais existirem.
