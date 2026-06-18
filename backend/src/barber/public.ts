@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { queryAll, queryOne, runSql } from "../database/database.js";
 import { getAvailableSlots } from "./availability.js";
+import { runBookingAssistant } from "./assistant.js";
 
 const router = Router();
 
@@ -54,6 +55,26 @@ router.get("/:slug/disponibilidade", async (req: Request, res: Response) => {
     professional as any
   );
   res.json({ date, slots });
+});
+
+// Chat de apoio ao agendamento: só extrai intenção (serviço/profissional/data)
+// via IA. Não cria nem confirma agendamento — isso continua sendo feito pelas
+// rotas determinísticas /disponibilidade e /agendar acima, chamadas pela UI.
+router.post("/:slug/assistente", async (req: Request, res: Response) => {
+  const empresa = await resolveEmpresa(String(req.params.slug));
+  if (!empresa) return res.status(404).json({ error: "Barbearia não encontrada" });
+
+  const { messages } = req.body;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "messages é obrigatório" });
+  }
+
+  try {
+    const result = await runBookingAssistant((empresa as any).id, (empresa as any).name, messages);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.post("/:slug/agendar", async (req: Request, res: Response) => {

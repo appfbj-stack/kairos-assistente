@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Scissors, Clock, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
+import { Scissors, Clock, CheckCircle2, Calendar as CalendarIcon, Send, Sparkles } from "lucide-react";
 import { barberApi } from "@/services/barberApi";
 import { formatCurrency } from "@/lib/utils";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+interface ChatMessage {
+  role: "assistant" | "user";
+  content: string;
 }
 
 export default function AgendarPage() {
@@ -31,6 +36,13 @@ export default function AgendarPage() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    { role: "assistant", content: "Oi! Me diga qual serviço você quer agendar, com quem e para quando 🙂" },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatSending, setChatSending] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     barberApi.public
       .info(slug)
@@ -42,6 +54,10 @@ export default function AgendarPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
 
   useEffect(() => {
     setTime("");
@@ -70,6 +86,30 @@ export default function AgendarPage() {
       setError(e.message || "Não foi possível agendar. Tente outro horário.");
     }
     setSubmitting(false);
+  }
+
+  async function sendChat() {
+    const text = chatInput.trim();
+    if (!text || chatSending) return;
+    const nextHistory: ChatMessage[] = [...chatMessages, { role: "user", content: text }];
+    setChatMessages(nextHistory);
+    setChatInput("");
+    setChatSending(true);
+    try {
+      const res = await barberApi.public.assistente(slug, nextHistory);
+      setChatMessages([...nextHistory, { role: "assistant", content: res.reply }]);
+      if (res.service_id) setServiceId(res.service_id);
+      if (res.professional_id) setProfessionalId(res.professional_id);
+      if (typeof res.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(res.date) && res.date >= todayStr()) {
+        setDate(res.date);
+      }
+    } catch {
+      setChatMessages([
+        ...nextHistory,
+        { role: "assistant", content: "Desculpe, tive um problema para responder. Pode tentar de novo?" },
+      ]);
+    }
+    setChatSending(false);
   }
 
   if (loading) {
@@ -115,6 +155,46 @@ export default function AgendarPage() {
           </div>
           <h1 className="text-white text-lg font-bold">{empresa?.name}</h1>
           <p className="text-gray-400 text-sm">Agende seu horário</p>
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
+          <p className="text-xs text-gray-400 mb-3 flex items-center gap-1.5">
+            <Sparkles size={12} /> Converse para agendar mais rápido
+          </p>
+          <div className="space-y-2 max-h-64 overflow-y-auto mb-3 pr-1">
+            {chatMessages.map((m, i) => (
+              <div
+                key={i}
+                className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${
+                  m.role === "user"
+                    ? "bg-kairos-500 text-white ml-auto"
+                    : "bg-gray-800 text-gray-200"
+                }`}
+              >
+                {m.content}
+              </div>
+            ))}
+            {chatSending && (
+              <div className="max-w-[85%] px-3 py-2 rounded-lg text-sm bg-gray-800 text-gray-400">Digitando...</div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendChat()}
+              placeholder="Ex: quero cortar o cabelo amanhã"
+              className="flex-1 px-3 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-kairos-500"
+            />
+            <button
+              onClick={sendChat}
+              disabled={chatSending || !chatInput.trim()}
+              className="px-3 py-2.5 bg-kairos-500 text-white rounded-lg hover:bg-kairos-600 transition-colors disabled:opacity-40"
+            >
+              <Send size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">

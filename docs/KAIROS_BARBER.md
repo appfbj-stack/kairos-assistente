@@ -42,6 +42,7 @@ foi motivada por este módulo.
 | `POST /api/barber/ia` | JWT Core | IA do Gestor — chat com contexto dos dados da barbearia (reaproveita `chatCompletion()`) |
 | `GET /api/barber/public/:slug` | **sem auth** | Dados públicos da barbearia (nome, serviços, profissionais ativos) — `:slug` é o `empresas.slug` |
 | `GET /api/barber/public/:slug/disponibilidade` | **sem auth** | Horários livres (mesma lógica da rota autenticada, mas por slug) |
+| `POST /api/barber/public/:slug/assistente` | **sem auth** | Chat de apoio ao agendamento (extração de intenção via IA, ver seção abaixo) |
 | `POST /api/barber/public/:slug/agendar` | **sem auth** | Cliente final agenda direto pelo link (cria o cliente se o telefone não existir ainda) |
 
 ## Link de agendamento público
@@ -73,20 +74,36 @@ Não há seed automático (mesma convenção do restante do Core). Passo a passo
   `frontend/src/hooks/use-barber-auth.ts` e `frontend/src/services/barberApi.ts`.
   Distinto do painel interno do Kairos Admin (Basic Auth single-tenant).
 - **Página pública de agendamento** (`frontend/src/app/agendar/[slug]/page.tsx`):
-  sem login, mobile-first, fluxo serviço → profissional → data/horário →
-  dados do cliente → confirmação.
+  sem login, mobile-first. Tem um painel de chat opcional no topo (descrito
+  abaixo) e, em seguida, o fluxo guiado serviço → profissional → data/horário
+  → dados do cliente → confirmação — o chat só acelera o preenchimento desse
+  mesmo fluxo, nunca o substitui.
 - `frontend/src/middleware.ts` isenta `/barber*` e `/agendar*` do Basic Auth
   do Admin (cada um tem seu próprio mecanismo de acesso — JWT ou nenhum).
+
+## Assistente conversacional de agendamento
+
+O PRD descreve o link de agendamento como "IA conversacional". Implementado
+com uma separação estrita entre **interpretar linguagem natural** (LLM) e
+**executar a ação** (rotas determinísticas já existentes):
+
+- `POST /api/barber/public/:slug/assistente` (`backend/src/barber/assistant.ts`,
+  `runBookingAssistant()`) recebe o histórico da conversa, monta um prompt com
+  os serviços/profissionais reais da empresa e pede ao `chatCompletion()` uma
+  resposta em JSON estrito: `{"reply", "service_name", "professional_name",
+  "date"}`. O backend então resolve `service_name`/`professional_name` para
+  IDs reais via `SELECT ... WHERE name ILIKE ?` (só aceita correspondência
+  exata com algo cadastrado; caso contrário retorna `null`).
+- A IA **nunca** chama `/disponibilidade` ou `/agendar` diretamente — ela só
+  propõe `service_id`/`professional_id`/`date`. O frontend
+  (`frontend/src/app/agendar/[slug]/page.tsx`) usa esses valores para
+  preencher o mesmo state (`serviceId`/`professionalId`/`date`) usado pelo
+  fluxo guiado por botões, que continua sendo o único caminho que verifica
+  disponibilidade e cria o agendamento — preservando a regra de não deixar um
+  LLM tomar ações de escrita sem validação determinística por trás.
 
 ## Pendências conhecidas (fora do escopo desta primeira leva)
 
 - **Notificações (WhatsApp/SMS)**: o PRD pede lembretes automáticos. Não há
   integração configurada (Twilio, WhatsApp Business API etc.) — fora do
   escopo até essas credenciais existirem.
-- **Agendamento conversacional via IA**: o PRD descreve o link de
-  agendamento como "IA conversacional". A primeira leva entrega a API
-  determinística (`/api/barber/public/:slug/...`) que uma camada
-  conversacional (bot de WhatsApp, por exemplo) pode chamar — não foi
-  construído um agente de IA com efeitos colaterais (criar/cancelar
-  agendamento) diretamente, para evitar um LLM tomando ações de escrita sem
-  validação determinística por trás.

@@ -106,5 +106,7 @@ export const barberApi = {
       ),
     agendar: (slug: string, data: any) =>
       publicFetch(`/barber/public/${slug}/agendar`, { method: "POST", body: JSON.stringify(data) }),
+    assistente: (slug: string, messages: { role: string; content: string }[]) =>
+      publicFetch(`/barber/public/${slug}/assistente`, { method: "POST", body: JSON.stringify({ messages }) }),
   },
 };
