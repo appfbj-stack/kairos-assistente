@@ -246,19 +246,19 @@ const migrations = [
         UNIQUE(empresa_id, key)
       );
     `,
-    {
-        name: "004_empresa_id_nos_modulos",
-        sql: `
-              ALTER TABLE conversations ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                    ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                          ALTER TABLE memory_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                                ALTER TABLE settings ADD COLUMN IF NOT EXISTS empresa_id TEXT;
-                                      CREATE INDEX IF NOT EXISTS idx_conversations_empresa ON conversations(empresa_id);
-                                            CREATE INDEX IF NOT EXISTS idx_agenda_empresa ON agenda_items(empresa_id);
-                                                  CREATE INDEX IF NOT EXISTS idx_memory_empresa ON memory_items(empresa_id);
-                                                        CREATE INDEX IF NOT EXISTS idx_settings_empresa ON settings(empresa_id)
-                                                            `,
   },
+  {
+    name: "004_empresa_id_nos_modulos",
+    sql: `
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      ALTER TABLE agenda_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      ALTER TABLE memory_items ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      ALTER TABLE settings ADD COLUMN IF NOT EXISTS empresa_id TEXT;
+      CREATE INDEX IF NOT EXISTS idx_conversations_empresa ON conversations(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_agenda_empresa ON agenda_items(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_memory_empresa ON memory_items(empresa_id);
+      CREATE INDEX IF NOT EXISTS idx_settings_empresa ON settings(empresa_id);
+    `,
   },
 ];
 
