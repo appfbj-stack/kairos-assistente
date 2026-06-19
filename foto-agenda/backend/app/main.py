@@ -48,7 +48,9 @@ async def lifespan(app: FastAPI):
 from app.routes import auth, admin, shoots, hermes, panel, google_auth
 
 app = FastAPI(title="FotoAgenda API", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+from app.core.config import settings as _cfg
+_origins = [o.strip() for o in _cfg.CORS_ORIGINS.split(",") if o.strip()] if _cfg.CORS_ORIGINS else ["*"]
+app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(auth.router); app.include_router(admin.router); app.include_router(shoots.router); app.include_router(hermes.router); app.include_router(panel.router); app.include_router(google_auth.router)
 
 @app.get("/health")

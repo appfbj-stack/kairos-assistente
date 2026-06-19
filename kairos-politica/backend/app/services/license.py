@@ -7,8 +7,12 @@ async def verify_license() -> dict:
         return {"valid": True, "status": "unknown", "message": "Kairos Admin não configurado"}
     url = f"{settings.KAIROS_ADMIN_URL}/api/license/verify"
     params = {"client_id": settings.KAIROS_CLIENT_ID, "app_slug": settings.APP_SLUG}
+    auth = (
+        (settings.KAIROS_ADMIN_BASIC_USER, settings.KAIROS_ADMIN_BASIC_PASSWORD)
+        if settings.KAIROS_ADMIN_BASIC_USER else None
+    )
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, auth=auth) as client:
             res = await client.get(url, params=params)
             return res.json()
     except Exception:

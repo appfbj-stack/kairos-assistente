@@ -12,9 +12,19 @@ export function getApiUrl(): string {
   return "http://backend:3010/api";
 }
 
+function getBasicAuth(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|;\s*)kairos_auth=([^;]*)/);
+  return match ? match[1] : null;
+}
+
 export async function fetchApi(path: string, options?: RequestInit) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const auth = getBasicAuth();
+  if (auth) headers["Authorization"] = "Basic " + auth;
+
   const res = await fetch(`${getApiUrl()}${path}`, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     credentials: "include",
     ...options,
   });

@@ -19,8 +19,8 @@ Mantenha este arquivo atualizado sempre que um novo app for criado ou registrado
 | Orçamentos Vidraçaria | `vidra-aria-top` | Lite | 3025 | — | [vidra-aria-top](https://github.com/appfbj-stack/vidra-aria-top) | ✅ Ativo |
 | Imobiliária Inteligente | `imobiliaria-inteligente` | Pro | 3030 | — | [imobiliaria-inteligente](https://github.com/appfbj-stack/imobiliaria-inteligente) | ✅ Ativo |
 | Agenda Mecânica Pro | `agenda-mecanica-pro` | Pro | 3035 | 8015 | [agenda-mecanica](https://github.com/appfbj-stack/agenda-mecanica) | ✅ Ativo |
-| Kairos Advocacia | `kairos-advocacia` | Pro | 3045 | 8025 | `kairos-advocacia/` (neste repositório) | 🚧 Não deployado |
-| Kairos Política | `kairos-politica` | Pro | 3040 | 8020 | `kairos-politica/` (neste repositório) | 🚧 Não deployado |
+| Kairos Advocacia | `kairos-advocacia` | Pro | 3045 | 8025 | `kairos-advocacia/` (neste repositório) | ✅ Ativo (containers up, licença validada, pendente: HTTPS Dokploy) |
+| Kairos Política | `kairos-politica` | Pro | 3040 | 8020 | `kairos-politica/` (neste repositório) | ✅ Ativo (containers up, licença validada, pendente: HTTPS Dokploy) |
 | Fotografia (Kairos) | `fotoagenda` | Pro | 3050 | 8030 | `foto-agenda/` (neste repositório — build próprio, distinto do FotoAgenda Pro externo acima) | 🚧 Não deployado |
 | Kairos Barber | `kairos-barber` | Módulo embutido | — | — (rotas em `backend/src/barber/`, dentro do Kairos Admin) | 🚧 Não deployado |
 

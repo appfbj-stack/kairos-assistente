@@ -48,7 +48,8 @@ async def lifespan(app: FastAPI):
 from app.routes import agenda, auth, batismos, carteirinhas, congregacoes, dashboard, membros, modules, obreiros, patrimonio, usuarios
 
 app = FastAPI(title="Kairos Sede Sorocaba API", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()] if settings.CORS_ORIGINS else ["*"]
+app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")

@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     KAIROS_ADMIN_URL: str = ""
     KAIROS_CLIENT_ID: str = ""
+    KAIROS_ADMIN_BASIC_USER: str = ""
+    KAIROS_ADMIN_BASIC_PASSWORD: str = ""
 
     ADMIN_EMAIL: str = ""
 
@@ -22,7 +24,14 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: str = "uploads"
 
+    CORS_ORIGINS: str = ""
+
     class Config:
         env_file = ".env"
 
 settings = Settings()
+
+if settings.SECRET_KEY == "change-me-in-production":
+    import sys
+    print("FATAL: SECRET_KEY nao foi configurada. Defina uma chave segura no .env")
+    sys.exit(1)

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, SessionLocal
 from app.core.security import hash_password
+from app.core.config import settings
 from app.models import Base, Tenant, User
 from app.services.license import verify_license
 
@@ -44,7 +45,8 @@ async def lifespan(app: FastAPI):
 from app.routes import agenda, auth, clientes, dashboard, documentos, faturas, processos, users
 
 app = FastAPI(title="Kairos Advocacia API", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()] if settings.CORS_ORIGINS else ["*"]
+app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 app.include_router(auth.router)
 app.include_router(users.router)

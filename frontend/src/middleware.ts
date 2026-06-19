@@ -16,9 +16,17 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const expected = "Basic " + Buffer.from(`${user}:${password}`).toString("base64");
+  const b64 = Buffer.from(`${user}:${password}`).toString("base64");
+  const expected = "Basic " + b64;
   if (request.headers.get("authorization") === expected) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.cookies.set("kairos_auth", b64, {
+      httpOnly: false,
+      sameSite: "lax",
+      maxAge: 86400,
+      path: "/",
+    });
+    return response;
   }
 
   return new NextResponse("Authentication required", {
