@@ -32,6 +32,7 @@ services:
       # Protege toda a API exceto /api/license/verify (consultado sem credencial pelos apps satélites)
       - BASIC_AUTH_USER=${BASIC_AUTH_USER}
       - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3008,http://187.77.229.227:3008,https://admin.fbautomacao.space
     ports:
       - "3010:3010"
     volumes:
