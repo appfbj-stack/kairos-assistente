@@ -19,7 +19,8 @@ const PORT = Number(process.env.PORT) || 3010;
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "kairos";
 const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD || "kairos123";
 
-app.use(cors({ origin: "*" }));
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "http://localhost:3000,http://localhost:3008,http://localhost:3010").split(",");
+app.use(cors({ origin: CORS_ORIGINS, credentials: true }));
 app.use(express.json({ limit: "50mb" }));
 
 // Basic Auth para todas as rotas EXCETO /api/core, /api/chat, /api/agenda,

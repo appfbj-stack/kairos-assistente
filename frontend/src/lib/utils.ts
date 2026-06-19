@@ -25,7 +25,6 @@ export async function fetchApi(path: string, options?: RequestInit) {
 
   const res = await fetch(`${getApiUrl()}${path}`, {
     headers,
-    credentials: "include",
     ...options,
   });
   if (!res.ok) {
