@@ -1,8 +1,12 @@
-# Kairos-Assistente — Sessão Completa 2026-06-18
+# Kairos-Assistente — Sessão 2026-06-18 (Parte 1) + 2026-06-19 (Parte 2)
 
-## Goal
+## Goal (Parte 1 — original)
 
 Reparar o backend Kairos-Assistente em produção, **integrar o primeiro app (`kairos-sede-sorocaba`)** ao Kairos Admin, e configurar o sistema de **módulos ativáveis/desativáveis por empresa**.
+
+## Goal (Parte 2 — Marketplace de Módulos + Agentes)
+
+**Criar o Marketplace de Módulos e Agentes** no Admin, unificando os dois sistemas paralelos de módulos sob o Core Admin como fonte única da verdade, e estabelecendo a base para o Marketplace de Agentes de IA (que não existia antes).
 
 ## Constraints & Preferences
 
@@ -92,11 +96,20 @@ Reparar o backend Kairos-Assistente em produção, **integrar o primeiro app (`k
   - `GET /api/core/modules/empresas/:empresaId` — módulos ativos da empresa
   - `POST /api/core/modules/empresas/:empresaId/:moduleId` — ativar/desativar por empresa (SUPER_ADMIN)
 
+#### 5. Marketplace de Módulos + Agentes (nova)
+- **Migration 005_modules_v2**: expandiu `modules` (category, description, version, icon, tier) + criou `module_permissions`, `module_dependencies`, `module_configs`, `module_logs`
+- **Migration 006_agents**: criou `agents`, `agent_tools`, `agent_modules`, `tenant_agents`, `agent_logs`
+- **Router modules.ts expandido**: CRUD permissões, dependências, configs por tenant, logs (legacy preservado)
+- **Router agents.ts novo**: CRUD agentes, tools, módulos vinculados, ativação por tenant, logs
+- **Supervisor novo**: `GET /api/core/supervisor/:empresaId` retorna módulos ativos + agentes ativos com tools
+- **Seed automático**: 14 módulos + 4 agentes (Assistente Pastoral, Financeiro, Comunicação, Administrativo) com tools e module-links
+- **Frontend Marketplace**: página `/marketplace` com abas Módulos/Agentes, seletor de empresa, toggle ativar/desativar
+- **Frontend API**: `api.core.modules.*`, `api.core.agents.*`, `api.core.supervisor.*`
+- **Sidebar**: link "Marketplace" adicionado (grupo Ferramentas)
+- **Arquitetura**: dois marketplaces paralelos (módulos + agentes) sob o mesmo Core, com link `agent_modules` conectando ambos
+
 ### 🔄 In Progress
-- **Configurar Dokploy** para o projeto `kairos-sede-sorocaba`:
-  - Registrar `sede.fbautomacao.space` → frontend (porta 3020)
-  - Registrar `api.sede.fbautomacao.space` → backend (porta 8010)
-  - Ativar HTTPS com Let's Encrypt
+- **Deploy das alterações para VPS** — migrations 005 e 006 precisam ser aplicadas no Postgres de produção
 
 ### ⛔ Blocked
 - *(none)*
@@ -117,18 +130,22 @@ Reparar o backend Kairos-Assistente em produção, **integrar o primeiro app (`k
 | **Apps enviam Basic Auth do Admin** | Middleware Express protege todas as rotas `/api/*` exceto `/api/core` |
 | **Login Admin trocado para `borgesjaf@gmail.com`** | Solicitação do usuário nesta sessão |
 | **Dokploy reseta `.env` em redeploys** | Workaround: re-aplicar `sed` no `.env` + `docker compose up -d --force-recreate --no-deps backend` após cada deploy automático. O Dokploy também pode resetar `migrations.ts` para a versão com bug — sempre conferir `sed -n '247,253p'` antes de rebuildar. |
+| **Dois marketplaces paralelos (módulos + agentes)** | Compartilham o mesmo Core, agentes podem depender de módulos via `agent_modules` |
+| **Marketplace não existia antes** | Tudo foi criado do zero nesta sessão — módulos expandidos, agents criados, supervisor criado |
+| **Migrations sempre aditivas (IF NOT EXISTS)** | Garante compatibilidade com dados existentes em produção |
+| **Seed apenas se tabela vazia** | `bootstrapModules()` e `bootstrapAgents()` checam `COUNT(*)` antes de inserir — idempotente |
 
 ---
 
 ## Next Steps
 
-1. **Dokploy**: configurar domínios `sede.fbautomacao.space` e `api.sede.fbautomacao.space` no projeto `kairos-sede-sorocaba` + HTTPS
-2. **Google Cloud Console**: adicionar `https://api.sede.fbautomacao.space/api/auth/google/callback` em "URIs de redirecionamento autorizados"
-3. **Testar login Google** com `fernandojaborges@gmail.com` no frontend sede-sorocaba
-4. **Próximos apps**: `kairos-advocacia`, `kairos-politica`, `foto-agenda` (código já existe em `kairos-assistente/`)
-5. ~~**Integrar sistema de módulos** no frontend sede-sorocaba~~ ✅ Concluído
-6. **Migrar para `C:\Users\ferna\kairos-platform\`** (NestJS novo) — substituir legado
-7. **Deploy**: fazer push e redeploy das alterações de módulos para VPS
+1. **Deploy das migrations 005 e 006** na VPS (build + redeploy do backend)
+2. **Sincronizar módulos do Admin** com apps satélite (sede-sorocaba consulta `/core/supervisor/:id` no startup)
+3. **Dokploy**: configurar domínios `sede.fbautomacao.space` e `api.sede.fbautomacao.space` no projeto `kairos-sede-sorocaba` + HTTPS
+4. **Google Cloud Console**: adicionar `https://api.sede.fbautomacao.space/api/auth/google/callback` em "URIs de redirecionamento autorizados"
+5. **Testar login Google** com `fernandojaborges@gmail.com` no frontend sede-sorocaba
+6. **Próximos apps**: `kairos-advocacia`, `kairos-politica`, `foto-agenda` (código já existe em `kairos-assistente/`)
+7. **Migrar para `C:\Users\ferna\kairos-platform\`** (NestJS novo) — substituir legado
 
 ---
 
@@ -247,7 +264,11 @@ ssh root@187.77.229.227 "docker logs kairos-sede-sorocaba-backend-1 --tail 10"
 ### VPS
 - `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/.env` — vars Admin
 - `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/docker-compose.yml` — compose Admin
-- `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/backend/src/database/migrations.ts` — corrigido
+- `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/backend/src/database/migrations.ts` — corrigido (+ 005 e 006)
+- `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/backend/src/core/modules.ts` — expandido
+- `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/backend/src/core/agents.ts` — novo
+- `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/backend/src/core/supervisor.ts` — novo
+- `/etc/dokploy/compose/kairos-assistente-kairos-assistente-kgavlc/code/backend/src/core/bootstrap.ts` — + seed modules + seed agents
 - `/etc/dokploy/compose/kairos-sede-sorocaba/` — código do app sede
 - `/etc/dokploy/compose/kairos-sede-sorocaba/.env` — env do app sede
 - `/etc/dokploy/compose/kairos-sede-sorocaba/KAIROS_MODULOS.md` — doc módulos (cópia VPS)

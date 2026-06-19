@@ -73,6 +73,57 @@ export const api = {
     },
   },
 
+  core: {
+    modules: {
+      list: () => fetchApi("/core/modules"),
+      create: (data: any) => fetchApi("/core/modules", { method: "POST", body: JSON.stringify(data) }),
+      update: (id: string, data: any) => fetchApi(`/core/modules/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      perms: {
+        list: (moduleId: string) => fetchApi(`/core/modules/${moduleId}/permissions`),
+        create: (moduleId: string, data: any) => fetchApi(`/core/modules/${moduleId}/permissions`, { method: "POST", body: JSON.stringify(data) }),
+        delete: (moduleId: string, permId: string) => fetchApi(`/core/modules/${moduleId}/permissions/${permId}`, { method: "DELETE" }),
+      },
+      deps: {
+        list: (moduleId: string) => fetchApi(`/core/modules/${moduleId}/dependencies`),
+        create: (moduleId: string, data: any) => fetchApi(`/core/modules/${moduleId}/dependencies`, { method: "POST", body: JSON.stringify(data) }),
+        delete: (moduleId: string, depId: string) => fetchApi(`/core/modules/${moduleId}/dependencies/${depId}`, { method: "DELETE" }),
+      },
+      configs: {
+        list: (empresaId: string) => fetchApi(`/core/modules/configs/${empresaId}`),
+        set: (empresaId: string, moduleId: string, key: string, value: string) =>
+          fetchApi(`/core/modules/configs/${empresaId}/${moduleId}/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
+        delete: (empresaId: string, moduleId: string, key: string) =>
+          fetchApi(`/core/modules/configs/${empresaId}/${moduleId}/${key}`, { method: "DELETE" }),
+      },
+      logs: (params?: { empresa_id?: string; module_id?: string; limit?: number }) => {
+        const q = new URLSearchParams(params as any).toString();
+        return fetchApi(`/core/modules/logs${q ? `?${q}` : ""}`);
+      },
+    },
+    agents: {
+      list: () => fetchApi("/core/agents"),
+      create: (data: any) => fetchApi("/core/agents", { method: "POST", body: JSON.stringify(data) }),
+      update: (id: string, data: any) => fetchApi(`/core/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      tools: {
+        list: (agentId: string) => fetchApi(`/core/agents/${agentId}/tools`),
+        create: (agentId: string, data: any) => fetchApi(`/core/agents/${agentId}/tools`, { method: "POST", body: JSON.stringify(data) }),
+        delete: (agentId: string, toolId: string) => fetchApi(`/core/agents/${agentId}/tools/${toolId}`, { method: "DELETE" }),
+      },
+      modules: {
+        list: (agentId: string) => fetchApi(`/core/agents/${agentId}/modules`),
+        link: (agentId: string, moduleId: string) => fetchApi(`/core/agents/${agentId}/modules/${moduleId}`, { method: "POST" }),
+        unlink: (agentId: string, moduleId: string) => fetchApi(`/core/agents/${agentId}/modules/${moduleId}`, { method: "DELETE" }),
+      },
+      logs: (params?: { empresa_id?: string; agent_id?: string; limit?: number }) => {
+        const q = new URLSearchParams(params as any).toString();
+        return fetchApi(`/core/agents/logs${q ? `?${q}` : ""}`);
+      },
+    },
+    supervisor: {
+      status: (empresaId: string) => fetchApi(`/core/supervisor/${empresaId}`),
+    },
+  },
+
   vps: {
     stats: () => fetchApi("/vps/stats"),
   },

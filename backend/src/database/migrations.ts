@@ -259,7 +259,111 @@ const migrations = [
                                                   CREATE INDEX IF NOT EXISTS idx_memory_empresa ON memory_items(empresa_id);
                                                         CREATE INDEX IF NOT EXISTS idx_settings_empresa ON settings(empresa_id)
                                                             `,
-  },
+   },
+   {
+     name: "006_agents",
+     sql: `
+       CREATE TABLE IF NOT EXISTS agents (
+         id TEXT PRIMARY KEY,
+         name TEXT NOT NULL,
+         slug TEXT NOT NULL UNIQUE,
+         description TEXT DEFAULT '',
+         icon TEXT DEFAULT '',
+         category TEXT DEFAULT 'produtividade',
+         version TEXT DEFAULT '1.0.0',
+         tier TEXT DEFAULT 'pro' CHECK(tier IN ('free','lite','pro')),
+         active BOOLEAN NOT NULL DEFAULT TRUE,
+         config_schema TEXT DEFAULT '{}',
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         updated_at TEXT NOT NULL DEFAULT ${TS}
+       );
+
+       CREATE TABLE IF NOT EXISTS agent_tools (
+         id TEXT PRIMARY KEY,
+         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+         name TEXT NOT NULL,
+         description TEXT DEFAULT '',
+         input_schema TEXT DEFAULT '{}',
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         UNIQUE(agent_id, name)
+       );
+
+       CREATE TABLE IF NOT EXISTS agent_modules (
+         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+         module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         PRIMARY KEY (agent_id, module_id)
+       );
+
+       CREATE TABLE IF NOT EXISTS tenant_agents (
+         empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+         active BOOLEAN NOT NULL DEFAULT TRUE,
+         config JSONB DEFAULT '{}',
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         updated_at TEXT NOT NULL DEFAULT ${TS},
+         PRIMARY KEY (empresa_id, agent_id)
+       );
+
+       CREATE TABLE IF NOT EXISTS agent_logs (
+         id TEXT PRIMARY KEY,
+         empresa_id TEXT REFERENCES empresas(id) ON DELETE CASCADE,
+         agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+         action TEXT NOT NULL,
+         details TEXT DEFAULT '',
+         created_by TEXT,
+         created_at TEXT NOT NULL DEFAULT ${TS}
+       );
+     `,
+   },
+   {
+     name: "005_modules_v2",
+     sql: `
+       ALTER TABLE modules ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'geral';
+       ALTER TABLE modules ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+       ALTER TABLE modules ADD COLUMN IF NOT EXISTS version TEXT DEFAULT '1.0.0';
+       ALTER TABLE modules ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '';
+       ALTER TABLE modules ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'pro' CHECK(tier IN ('free','lite','pro'));
+
+       CREATE TABLE IF NOT EXISTS module_permissions (
+         id TEXT PRIMARY KEY,
+         module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+         role TEXT NOT NULL,
+         action TEXT NOT NULL DEFAULT 'access',
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         UNIQUE(module_id, role, action)
+       );
+
+       CREATE TABLE IF NOT EXISTS module_dependencies (
+         id TEXT PRIMARY KEY,
+         module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+         depends_on TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         UNIQUE(module_id, depends_on)
+       );
+
+       CREATE TABLE IF NOT EXISTS module_configs (
+         id TEXT PRIMARY KEY,
+         empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+         module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+         key TEXT NOT NULL,
+         value TEXT DEFAULT '',
+         created_at TEXT NOT NULL DEFAULT ${TS},
+         updated_at TEXT NOT NULL DEFAULT ${TS},
+         UNIQUE(empresa_id, module_id, key)
+       );
+
+       CREATE TABLE IF NOT EXISTS module_logs (
+         id TEXT PRIMARY KEY,
+         empresa_id TEXT REFERENCES empresas(id) ON DELETE CASCADE,
+         module_id TEXT NOT NULL REFERENCES modules(id) ON DELETE CASCADE,
+         action TEXT NOT NULL,
+         details TEXT DEFAULT '',
+         created_by TEXT,
+         created_at TEXT NOT NULL DEFAULT ${TS}
+       );
+     `,
+   },
 ];
 
 export async function runMigrations() {

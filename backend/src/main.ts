@@ -10,7 +10,7 @@ import { createBackup } from "./database/backup.js";
 import adminRouter from "./admin/admin.js";
 import licenseRouter from "./admin/license.js";
 import backupRouter from "./admin/backup.js";
-import coreRouter, { expireOverdueTrials, bootstrapSuperAdmin } from "./core/index.js";
+import coreRouter, { expireOverdueTrials, bootstrapSuperAdmin, bootstrapModules, bootstrapAgents } from "./core/index.js";
 import barberRouter from "./barber/index.js";
 
 const app = express();
@@ -74,6 +74,12 @@ async function start() {
 
       await bootstrapSuperAdmin();
           console.log("Bootstrap do SUPER_ADMIN concluido");
+
+      await bootstrapModules();
+          console.log("Bootstrap de módulos concluido");
+
+      await bootstrapAgents();
+          console.log("Bootstrap de agentes concluido");
 
       app.listen(PORT, "0.0.0.0", () => {
               console.log(`Kairos Core API rodando na porta ${PORT}`);
