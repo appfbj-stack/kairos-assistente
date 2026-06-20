@@ -18,7 +18,7 @@ interface Message {
   created_at?: string;
 }
 
-export default function AssistentePage({ params }: { params: { slug: string } }) {
+export default function AssistentePage({ params: paramsPromise }: { params: Promise<{ slug: string }> }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,6 +31,7 @@ export default function AssistentePage({ params }: { params: { slug: string } })
   const [config, setConfig] = useState<Config>({});
   const [assistantName, setAssistantName] = useState("Assistente Virtual");
   const [empresaName, setEmpresaName] = useState("");
+  const [slug, setSlug] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,15 +39,20 @@ export default function AssistentePage({ params }: { params: { slug: string } })
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
 
   useEffect(() => {
+    paramsPromise.then((p) => setSlug(p.slug));
+  }, []);
+
+  useEffect(() => {
+    if (!slug) return;
     async function init() {
       try {
-        const res = await fetch(`${baseUrl}/api/atendimento/public/${params.slug}`);
+        const res = await fetch(`${baseUrl}/api/atendimento/public/${slug}`);
         if (!res.ok) throw new Error("Não encontrado");
         const data = await res.json();
         setEmpresaName(data.empresa?.name || "");
         setAssistantName(data.assistant?.name || "Assistente Virtual");
         setConfig(data.configs || {});
-        if (data.assistant?.welcome_message && !registered) {
+        if (data.assistant?.welcome_message) {
           setMessages([{ id: "welcome", role: "assistant", content: data.assistant.welcome_message }]);
         }
       } catch {
@@ -55,7 +61,7 @@ export default function AssistentePage({ params }: { params: { slug: string } })
       setLoading(false);
     }
     init();
-  }, [params.slug]);
+  }, [slug]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -66,7 +72,7 @@ export default function AssistentePage({ params }: { params: { slug: string } })
   async function startConversation() {
     if (!name.trim()) return;
     try {
-      const res = await fetch(`${baseUrl}/api/atendimento/public/${params.slug}/visit`, {
+      const res = await fetch(`${baseUrl}/api/atendimento/public/${slug}/visit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, phone, email }),
@@ -89,7 +95,7 @@ export default function AssistentePage({ params }: { params: { slug: string } })
     setMessages((prev) => [...prev, { id: Date.now().toString(), role: "visitor", content: text }]);
 
     try {
-      const res = await fetch(`${baseUrl}/api/atendimento/public/${params.slug}/message`, {
+      const res = await fetch(`${baseUrl}/api/atendimento/public/${slug}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversation_id: conversationId, content: text }),
