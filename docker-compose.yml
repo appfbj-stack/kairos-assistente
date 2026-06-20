@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: kairos-assistente-postgres
     environment:
       - POSTGRES_DB=kairos
       - POSTGRES_USER=kairos
@@ -22,7 +23,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - PORT=3010
-      - POSTGRES_HOST=postgres
+      - POSTGRES_HOST=kairos-assistente-postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=kairos
       - POSTGRES_USER=kairos
