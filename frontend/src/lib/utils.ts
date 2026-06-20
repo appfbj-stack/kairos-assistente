@@ -1,15 +1,5 @@
 export function getApiUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
-      return "http://localhost:3010/api";
-    }
-    return `http://${host}:3010/api`;
-  }
-  return "http://backend:3010/api";
+  return process.env.NEXT_PUBLIC_API_URL || "http://backend:3010/api";
 }
 
 function getBasicAuth(): string | null {
@@ -21,10 +11,24 @@ function getBasicAuth(): string | null {
 
 export async function fetchApi(path: string, options?: RequestInit) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const auth = getBasicAuth();
-  if (auth) headers["Authorization"] = "Basic " + auth;
 
-  const res = await fetch(`${getApiUrl()}${path}`, {
+  // On the server, call backend directly.
+  // On the client, use the Next.js proxy route to avoid mixed-content / CORS.
+  if (typeof window === "undefined") {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://backend:3010/api";
+    const user = process.env.BASIC_AUTH_USER || "borgesjaf@gmail.com";
+    const password = process.env.BASIC_AUTH_PASSWORD || "Borges1972@";
+    headers["Authorization"] = "Basic " + Buffer.from(`${user}:${password}`).toString("base64");
+
+    const res = await fetch(`${apiUrl}${path}`, { headers, ...options });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Erro de conexão" }));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  }
+
+  const res = await fetch(`/api/proxy${path}`, {
     headers,
     ...options,
   });
