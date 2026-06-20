@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { queryAll, queryOne, runSql } from "../database/database.js";
+import { chatCompletion } from "../llm/llm.js";
 
 const router = Router();
 
@@ -93,21 +94,40 @@ router.post("/:slug/message", async (req: Request, res: Response) => {
     [msgId, conversation_id, content]
   );
 
-  const knowledge = await queryAll(
-    "SELECT title, content FROM atendimento_knowledge WHERE empresa_id = ? AND active = TRUE",
-    [empresaId]
-  );
+  let reply: string;
 
-  let reply = "Obrigado pela mensagem! Um de nossos atendentes entrará em contato em breve.";
+  try {
+    const knowledge = await queryAll(
+      "SELECT title, content FROM atendimento_knowledge WHERE empresa_id = ? AND active = TRUE",
+      [empresaId]
+    );
 
-  const lowerContent = content.toLowerCase();
-  for (const item of knowledge) {
-    const kTitle = (item as any).title.toLowerCase();
-    const kContent = (item as any).content.toLowerCase();
-    if (lowerContent.includes(kTitle) || lowerContent.includes(kContent.slice(0, 50))) {
-      reply = (item as any).content;
-      break;
-    }
+    const assistant = await queryOne(
+      "SELECT name, personality FROM atendimento_assistants WHERE empresa_id = ? AND active = TRUE LIMIT 1",
+      [empresaId]
+    );
+
+    const name = (assistant as any)?.name || "Assistente Virtual";
+    const personality = (assistant as any)?.personality || "Você é um assistente virtual amigável e prestativo.";
+
+    const knowledgeContext = knowledge.map((k: any) => `- ${k.title}: ${k.content}`).join("\n") || "Nenhum conhecimento específico cadastrado.";
+
+    const systemMsg = `${personality}\n\nBase de conhecimento:\n${knowledgeContext}\n\nResponda com base apenas no conhecimento acima. Se não souber, diga que não tem essa informação.`;
+
+    const history = await queryAll(
+      "SELECT role, content FROM atendimento_messages WHERE conversation_id = ? ORDER BY created_at ASC",
+      [conversation_id]
+    );
+
+    const messages = [
+      { role: "system", content: systemMsg },
+      ...history.map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
+      { role: "user", content },
+    ];
+
+    reply = await chatCompletion(messages);
+  } catch {
+    reply = "Obrigado pela mensagem! Um de nossos atendentes entrará em contato em breve.";
   }
 
   const replyId = crypto.randomUUID();

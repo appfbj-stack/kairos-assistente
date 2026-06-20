@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   // Rotas públicas que não usam Basic Auth do Admin:
   // - /agendar e /barber: agendamento público (clientes finais)
   // - /assistente: widget público de atendimento IA
-  if (pathname.startsWith("/agendar") || pathname.startsWith("/barber") || pathname.startsWith("/assistente")) {
+  if (pathname.startsWith("/agendar") || pathname.startsWith("/barber") || pathname.startsWith("/assistente") || pathname.startsWith("/api/proxy/atendimento/public")) {
     return NextResponse.next();
   }
 

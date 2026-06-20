@@ -36,7 +36,7 @@ export default function AssistentePage({ params: paramsPromise }: { params: Prom
   const [error, setError] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const baseUrl = typeof window !== "undefined" ? window.location.origin + "/api/proxy" : "";
 
   useEffect(() => {
     paramsPromise.then((p) => setSlug(p.slug));
