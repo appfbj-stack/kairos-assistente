@@ -127,6 +127,81 @@ export const api = {
     },
   },
 
+  atendimento: {
+    dashboard: (empresaId: string) => fetchApi(`/atendimento/dashboard/${empresaId}`),
+
+    assistants: {
+      list: (empresaId: string) => fetchApi(`/atendimento/assistants/${empresaId}`),
+      create: (empresaId: string, data: any) =>
+        fetchApi(`/atendimento/assistants/${empresaId}`, { method: "POST", body: JSON.stringify(data) }),
+      update: (empresaId: string, id: string, data: any) =>
+        fetchApi(`/atendimento/assistants/${empresaId}/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+      delete: (empresaId: string, id: string) =>
+        fetchApi(`/atendimento/assistants/${empresaId}/${id}`, { method: "DELETE" }),
+    },
+
+    knowledge: {
+      list: (empresaId: string, params?: { type?: string; search?: string }) => {
+        const q = new URLSearchParams(params as any).toString();
+        return fetchApi(`/atendimento/knowledge/${empresaId}${q ? `?${q}` : ""}`);
+      },
+      create: (empresaId: string, data: any) =>
+        fetchApi(`/atendimento/knowledge/${empresaId}`, { method: "POST", body: JSON.stringify(data) }),
+      update: (empresaId: string, id: string, data: any) =>
+        fetchApi(`/atendimento/knowledge/${empresaId}/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+      delete: (empresaId: string, id: string) =>
+        fetchApi(`/atendimento/knowledge/${empresaId}/${id}`, { method: "DELETE" }),
+    },
+
+    conversations: {
+      list: (empresaId: string, params?: { status?: string; channel?: string }) => {
+        const q = new URLSearchParams(params as any).toString();
+        return fetchApi(`/atendimento/conversations/${empresaId}${q ? `?${q}` : ""}`);
+      },
+      get: (empresaId: string, convId: string) =>
+        fetchApi(`/atendimento/conversations/${empresaId}/${convId}`),
+      update: (empresaId: string, convId: string, data: any) =>
+        fetchApi(`/atendimento/conversations/${empresaId}/${convId}`, { method: "PATCH", body: JSON.stringify(data) }),
+    },
+
+    chat: {
+      send: (data: any) =>
+        fetchApi("/atendimento/chat/message", { method: "POST", body: JSON.stringify(data) }),
+    },
+
+    leads: {
+      list: (empresaId: string, params?: { status?: string; source?: string; search?: string }) => {
+        const q = new URLSearchParams(params as any).toString();
+        return fetchApi(`/atendimento/leads/${empresaId}${q ? `?${q}` : ""}`);
+      },
+      get: (empresaId: string, leadId: string) =>
+        fetchApi(`/atendimento/leads/${empresaId}/${leadId}`),
+      create: (empresaId: string, data: any) =>
+        fetchApi(`/atendimento/leads/${empresaId}`, { method: "POST", body: JSON.stringify(data) }),
+      update: (empresaId: string, leadId: string, data: any) =>
+        fetchApi(`/atendimento/leads/${empresaId}/${leadId}`, { method: "PUT", body: JSON.stringify(data) }),
+      delete: (empresaId: string, leadId: string) =>
+        fetchApi(`/atendimento/leads/${empresaId}/${leadId}`, { method: "DELETE" }),
+    },
+
+    configs: {
+      get: (empresaId: string) => fetchApi(`/atendimento/configs/${empresaId}`),
+      set: (empresaId: string, key: string, value: string) =>
+        fetchApi(`/atendimento/configs/${empresaId}/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
+      whatsapp: {
+        update: (empresaId: string, data: any) =>
+          fetchApi(`/atendimento/configs/whatsapp/${empresaId}`, { method: "PUT", body: JSON.stringify(data) }),
+      },
+    },
+
+    reports: {
+      get: (empresaId: string, params?: { start_date?: string; end_date?: string }) => {
+        const q = new URLSearchParams(params as any).toString();
+        return fetchApi(`/atendimento/reports/${empresaId}${q ? `?${q}` : ""}`);
+      },
+    },
+  },
+
   vps: {
     stats: () => fetchApi("/vps/stats"),
   },

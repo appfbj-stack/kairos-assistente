@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Kairos Barber: link público de agendamento (clientes finais) e painel da
-  // equipe (login próprio via JWT do Core) não usam o Basic Auth do Admin.
-  if (pathname.startsWith("/agendar") || pathname.startsWith("/barber")) {
+  // Rotas públicas que não usam Basic Auth do Admin:
+  // - /agendar e /barber: agendamento público (clientes finais)
+  // - /assistente: widget público de atendimento IA
+  if (pathname.startsWith("/agendar") || pathname.startsWith("/barber") || pathname.startsWith("/assistente")) {
     return NextResponse.next();
   }
 

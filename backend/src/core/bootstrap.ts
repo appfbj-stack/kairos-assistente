@@ -37,6 +37,7 @@ const SEED_MODULES = [
   { name: "Músicas & Ministérios", slug: "musicas", category: "comunicacao", description: "Repertório, escalas e gestão de ministérios", icon: "Music", tier: "lite" },
   { name: "Dízimos & Ofertas", slug: "dizimos", category: "gestao", description: "Registro e relatórios de contribuições financeiras", icon: "HandCoins", tier: "lite" },
   { name: "IA & Automação", slug: "ia", category: "ferramentas", description: "Assistente inteligente e automação de tarefas", icon: "Brain", tier: "pro" },
+  { name: "Atendimento IA", slug: "atendimento", category: "comunicacao", description: "Chat inteligente com IA para captura de leads e atendimento automatizado", icon: "MessageSquare", tier: "pro" },
 ];
 
 /** Popula o catálogo de módulos se vazio. Idempotente. */

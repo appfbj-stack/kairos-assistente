@@ -362,8 +362,133 @@ const migrations = [
          created_by TEXT,
          created_at TEXT NOT NULL DEFAULT ${TS}
        );
-     `,
-   },
+      `,
+    },
+    {
+      name: "007_atendimento_ia",
+      sql: `
+        CREATE TABLE IF NOT EXISTS atendimento_assistants (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          name TEXT NOT NULL DEFAULT 'Assistente Virtual',
+          personality TEXT DEFAULT 'profissional e cordial',
+          goal TEXT DEFAULT 'Atender clientes e capturar leads',
+          tone TEXT DEFAULT 'profissional',
+          segment TEXT DEFAULT '',
+          welcome_message TEXT DEFAULT 'Olá! Como posso ajudar?',
+          avatar_url TEXT DEFAULT '',
+          active BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at TEXT NOT NULL DEFAULT ${TS},
+          updated_at TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_knowledge (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          type TEXT NOT NULL CHECK(type IN ('faq','service','product','hours','price','document','custom')),
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          category TEXT DEFAULT '',
+          tags TEXT DEFAULT '',
+          active BOOLEAN NOT NULL DEFAULT TRUE,
+          created_at TEXT NOT NULL DEFAULT ${TS},
+          updated_at TEXT NOT NULL DEFAULT ${TS},
+          created_by TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_visitors (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          name TEXT DEFAULT '',
+          phone TEXT DEFAULT '',
+          email TEXT DEFAULT '',
+          interest TEXT DEFAULT '',
+          ip TEXT DEFAULT '',
+          user_agent TEXT DEFAULT '',
+          first_seen TEXT NOT NULL DEFAULT ${TS},
+          last_seen TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_conversations (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          visitor_id TEXT REFERENCES atendimento_visitors(id) ON DELETE SET NULL,
+          status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','waiting','closed')),
+          channel TEXT NOT NULL DEFAULT 'web' CHECK(channel IN ('web','whatsapp','evolution')),
+          lead_id TEXT,
+          assigned_to TEXT,
+          started_at TEXT NOT NULL DEFAULT ${TS},
+          ended_at TEXT,
+          updated_at TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_messages (
+          id TEXT PRIMARY KEY,
+          conversation_id TEXT NOT NULL REFERENCES atendimento_conversations(id) ON DELETE CASCADE,
+          role TEXT NOT NULL CHECK(role IN ('visitor','assistant','agent','system')),
+          content TEXT NOT NULL,
+          metadata TEXT DEFAULT '{}',
+          created_at TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_leads (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          conversation_id TEXT REFERENCES atendimento_conversations(id) ON DELETE SET NULL,
+          name TEXT NOT NULL,
+          phone TEXT DEFAULT '',
+          whatsapp TEXT DEFAULT '',
+          email TEXT DEFAULT '',
+          interest TEXT DEFAULT '',
+          source TEXT DEFAULT 'web',
+          status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','contacted','qualified','converted','lost')),
+          notes TEXT DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT ${TS},
+          updated_at TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_configs (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          key TEXT NOT NULL,
+          value TEXT DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT ${TS},
+          updated_at TEXT NOT NULL DEFAULT ${TS},
+          UNIQUE(empresa_id, key)
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_whatsapp_config (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+          provider TEXT NOT NULL CHECK(provider IN ('meta','evolution')),
+          phone_number TEXT DEFAULT '',
+          api_key TEXT DEFAULT '',
+          webhook_url TEXT DEFAULT '',
+          webhook_secret TEXT DEFAULT '',
+          active BOOLEAN NOT NULL DEFAULT FALSE,
+          created_at TEXT NOT NULL DEFAULT ${TS},
+          updated_at TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE TABLE IF NOT EXISTS atendimento_logs (
+          id TEXT PRIMARY KEY,
+          empresa_id TEXT REFERENCES empresas(id) ON DELETE CASCADE,
+          action TEXT NOT NULL,
+          entity TEXT DEFAULT '',
+          entity_id TEXT DEFAULT '',
+          details TEXT DEFAULT '',
+          ip TEXT DEFAULT '',
+          created_by TEXT,
+          created_at TEXT NOT NULL DEFAULT ${TS}
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_atendimento_conv_empresa ON atendimento_conversations(empresa_id);
+        CREATE INDEX IF NOT EXISTS idx_atendimento_conv_status ON atendimento_conversations(status);
+        CREATE INDEX IF NOT EXISTS idx_atendimento_msg_conv ON atendimento_messages(conversation_id);
+        CREATE INDEX IF NOT EXISTS idx_atendimento_leads_empresa ON atendimento_leads(empresa_id);
+        CREATE INDEX IF NOT EXISTS idx_atendimento_knowledge_empresa ON atendimento_knowledge(empresa_id);
+      `,
+    },
 ];
 
 export async function runMigrations() {
