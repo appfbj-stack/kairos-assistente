@@ -28,7 +28,7 @@ router.get("/:empresaId", requireCoreAuth, async (req: Request, res: Response) =
     );
 
     const conversationTrend = await queryAll(
-      `SELECT (started_at::date) AS date, COUNT(*) AS total FROM atendimento_conversations WHERE empresa_id = ? AND started_at >= CURRENT_DATE - INTERVAL '7 days' GROUP BY (started_at::date) ORDER BY date`,
+      `SELECT (started_at::date) AS date, COUNT(*) AS total FROM atendimento_conversations WHERE empresa_id = ? AND (started_at::timestamp) >= CURRENT_DATE - INTERVAL '7 days' GROUP BY (started_at::date) ORDER BY date`,
       [empresaId]
     );
 
