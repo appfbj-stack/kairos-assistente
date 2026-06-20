@@ -51,6 +51,8 @@ services:
       args:
         - NEXT_PUBLIC_API_URL=https://api.${ADMIN_DOMAIN}/api
     environment:
+      - NODE_OPTIONS=--dns-result-order=verbatim
+      - INTERNAL_API_URL=http://backend:3010/api
       # Protege o painel com a mesma senha da API (checado em middleware.ts)
       - BASIC_AUTH_USER=${BASIC_AUTH_USER}
       - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
