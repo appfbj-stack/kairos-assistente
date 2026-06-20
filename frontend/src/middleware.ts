@@ -18,6 +18,8 @@ export function middleware(request: NextRequest) {
 
   const b64 = Buffer.from(`${user}:${password}`).toString("base64");
   const expected = "Basic " + b64;
+
+  // Check Authorization header (initial page load)
   if (request.headers.get("authorization") === expected) {
     const response = NextResponse.next();
     response.cookies.set("kairos_auth", b64, {
@@ -27,6 +29,12 @@ export function middleware(request: NextRequest) {
       path: "/",
     });
     return response;
+  }
+
+  // Check kairos_auth cookie (JS fetch calls)
+  const cookieAuth = request.cookies.get("kairos_auth")?.value;
+  if (cookieAuth && `Basic ${cookieAuth}` === expected) {
+    return NextResponse.next();
   }
 
   return new NextResponse("Authentication required", {

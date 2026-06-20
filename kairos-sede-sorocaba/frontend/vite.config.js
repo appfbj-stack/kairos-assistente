@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      includeAssets: ['favicon.svg', 'icons/*.png', 'icons/*.svg'],
       manifest: {
         name: 'Kairos OBPC Sorocaba',
         short_name: 'Kairos',

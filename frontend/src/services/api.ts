@@ -74,6 +74,9 @@ export const api = {
   },
 
   core: {
+    empresas: {
+      list: () => fetchApi("/core/empresas"),
+    },
     modules: {
       list: () => fetchApi("/core/modules"),
       create: (data: any) => fetchApi("/core/modules", { method: "POST", body: JSON.stringify(data) }),

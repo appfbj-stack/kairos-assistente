@@ -128,7 +128,7 @@ export default function Carteirinhas() {
         </button>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         {[{ value: '', label: 'Todas' }, { value: 'ativa', label: 'Ativas' }, { value: 'vencida', label: 'Vencidas' }, { value: 'nao_emitida', label: 'Não emitidas' }].map(({ value, label }) => (
           <button key={value} onClick={() => setFiltro(value)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${filtro === value ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>

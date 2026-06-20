@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Store, Bot, Plus, Edit2, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
 import { api } from "@/services/api";
+import { fetchApi } from "@/lib/utils";
 
 type Tab = "modules" | "agents";
 
@@ -38,7 +39,7 @@ export default function MarketplacePage() {
       const [mods, ags, emps] = await Promise.all([
         api.core.modules.list(),
         api.core.agents.list(),
-        fetch("/api/core/empresas").then(r => r.json()).catch(() => []),
+        api.core.empresas.list().catch(() => []),
       ]);
       setModules(mods);
       setAgents(ags);
@@ -53,7 +54,7 @@ export default function MarketplacePage() {
   async function loadEmpresaModules(empresaId: string) {
     if (!empresaId) return;
     try {
-      const mods = await fetch(`/api/core/modules/empresas/${empresaId}`).then(r => r.json());
+      const mods = await fetchApi(`/core/modules/empresas/${empresaId}`);
       setEmpresaModules(mods);
     } catch {}
   }
@@ -61,7 +62,7 @@ export default function MarketplacePage() {
   async function loadEmpresaAgents(empresaId: string) {
     if (!empresaId) return;
     try {
-      const ags = await fetch(`/api/core/agents/empresas/${empresaId}`).then(r => r.json());
+      const ags = await fetchApi(`/core/agents/empresas/${empresaId}`);
       setEmpresaAgents(ags);
     } catch {}
   }
@@ -76,9 +77,8 @@ export default function MarketplacePage() {
   async function toggleModule(moduleId: string, active: boolean) {
     if (!selectedEmpresa) return;
     try {
-      await fetch(`/api/core/modules/empresas/${selectedEmpresa}/${moduleId}`, {
+      await fetchApi(`/core/modules/empresas/${selectedEmpresa}/${moduleId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
       });
       await loadEmpresaModules(selectedEmpresa);
@@ -88,9 +88,8 @@ export default function MarketplacePage() {
   async function toggleAgent(agentId: string, active: boolean) {
     if (!selectedEmpresa) return;
     try {
-      await fetch(`/api/core/agents/empresas/${selectedEmpresa}/${agentId}`, {
+      await fetchApi(`/core/agents/empresas/${selectedEmpresa}/${agentId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
       });
       await loadEmpresaAgents(selectedEmpresa);

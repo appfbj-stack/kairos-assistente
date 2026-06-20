@@ -20,16 +20,36 @@ export function signAuthToken(user: AuthUser): string {
 
 export function requireCoreAuth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
-  if (!token) return res.status(401).json({ error: "Token de autenticação necessário" });
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
-    (req as any).user = decoded;
-    next();
-  } catch {
-    return res.status(401).json({ error: "Token inválido ou expirado" });
+  // JWT Bearer token
+  if (header.startsWith("Bearer ")) {
+    const token = header.slice(7);
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
+      (req as any).user = decoded;
+      return next();
+    } catch {
+      return res.status(401).json({ error: "Token inválido ou expirado" });
+    }
   }
+
+  // Fallback: Basic Auth (mesmo credentials do Admin)
+  if (header.startsWith("Basic ")) {
+    const basicUser = process.env.BASIC_AUTH_USER;
+    const basicPass = process.env.BASIC_AUTH_PASSWORD;
+    const expected = Buffer.from(`${basicUser}:${basicPass}`).toString("base64");
+    if (header.slice(6).trim() === expected) {
+      (req as any).user = {
+        id: "basic-auth-user",
+        email: basicUser,
+        role: "SUPER_ADMIN" as CoreRole,
+        empresa_id: null,
+      } as AuthUser;
+      return next();
+    }
+  }
+
+  return res.status(401).json({ error: "Token de autenticação necessário" });
 }
 
 export function requireRole(...roles: CoreRole[]) {

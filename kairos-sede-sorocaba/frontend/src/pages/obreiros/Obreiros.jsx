@@ -112,59 +112,86 @@ export default function Obreiros() {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-48"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
+      ) : data.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 bg-white rounded-xl border"><UserCheck size={48} className="mx-auto mb-2 opacity-30" /><p>Nenhum obreiro cadastrado</p></div>
       ) : (
-        <div className="bg-white rounded-xl border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Categoria</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600 hidden lg:table-cell">Credencial</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Validade</th>
-                <th className="text-right px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {data.map(o => {
-                const vencido = o.credencial_validade && new Date(o.credencial_validade) < new Date();
-                return (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        {o.foto_url
-                          ? <img src={o.foto_url} alt={o.nome} className="w-8 h-8 rounded-full object-cover" />
-                          : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">{o.nome?.[0]}</div>
-                        }
-                        <div>
-                          <p className="font-medium text-gray-900">{o.nome}</p>
-                          <p className="text-xs text-gray-500 lg:hidden">{LABEL_CAT[o.categoria]}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full font-medium">{LABEL_CAT[o.categoria]}</span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 hidden lg:table-cell">{o.credencial_numero || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${vencido ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <>
+          {/* Mobile: cards */}
+          <div className="lg:hidden space-y-3">
+            {data.map(o => {
+              const vencido = o.credencial_validade && new Date(o.credencial_validade) < new Date();
+              return (
+                <div key={o.id} className="bg-white rounded-xl border p-4 flex items-center gap-3">
+                  {o.foto_url
+                    ? <img src={o.foto_url} alt={o.nome} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                    : <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-700 shrink-0">{o.nome?.[0]}</div>
+                  }
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{o.nome}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">{LABEL_CAT[o.categoria]}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${vencido ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                         {o.credencial_validade ? formatarData(o.credencial_validade) : '—'}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <button onClick={() => setModal(o)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit size={15} /></button>
-                        <button onClick={() => { if (confirm('Remover obreiro?')) deletar.mutate(o.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {data.length === 0 && (
-            <div className="text-center py-12 text-gray-400"><UserCheck size={48} className="mx-auto mb-2 opacity-30" /><p>Nenhum obreiro cadastrado</p></div>
-          )}
-        </div>
+                    </div>
+                    {o.credencial_numero && <p className="text-xs text-gray-400 mt-0.5">Nº {o.credencial_numero}</p>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setModal(o)} className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"><Edit size={16} /></button>
+                    <button onClick={() => { if (confirm('Remover obreiro?')) deletar.mutate(o.id); }} className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Desktop: tabela */}
+          <div className="hidden lg:block bg-white rounded-xl border">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Categoria</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Credencial</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Validade</th>
+                  <th className="text-right px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {data.map(o => {
+                  const vencido = o.credencial_validade && new Date(o.credencial_validade) < new Date();
+                  return (
+                    <tr key={o.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {o.foto_url
+                            ? <img src={o.foto_url} alt={o.nome} className="w-8 h-8 rounded-full object-cover" />
+                            : <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">{o.nome?.[0]}</div>
+                          }
+                          <p className="font-medium text-gray-900">{o.nome}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full font-medium">{LABEL_CAT[o.categoria]}</span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{o.credencial_numero || '—'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${vencido ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {o.credencial_validade ? formatarData(o.credencial_validade) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <button onClick={() => setModal(o)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit size={15} /></button>
+                          <button onClick={() => { if (confirm('Remover obreiro?')) deletar.mutate(o.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {modal !== null && <FormObreiro obreiro={modal?.id ? modal : null} onFechar={() => setModal(null)} />}
