@@ -1,5 +1,5 @@
 export function getApiUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL || "http://backend:3010/api";
+  return process.env.INTERNAL_API_URL || "http://backend:3010/api";
 }
 
 function getBasicAuth(): string | null {
@@ -15,7 +15,7 @@ export async function fetchApi(path: string, options?: RequestInit) {
   // On the server, call backend directly.
   // On the client, use the Next.js proxy route to avoid mixed-content / CORS.
   if (typeof window === "undefined") {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://backend:3010/api";
+    const apiUrl = process.env.INTERNAL_API_URL || "http://backend:3010/api";
     const user = process.env.BASIC_AUTH_USER || "borgesjaf@gmail.com";
     const password = process.env.BASIC_AUTH_PASSWORD || "Borges1972@";
     headers["Authorization"] = "Basic " + Buffer.from(`${user}:${password}`).toString("base64");

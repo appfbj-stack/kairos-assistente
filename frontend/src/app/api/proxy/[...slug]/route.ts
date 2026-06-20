@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://backend:3010/api";
+const BACKEND_URL = process.env.INTERNAL_API_URL || "http://backend:3010/api";
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || "borgesjaf@gmail.com";
 const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD || "Borges1972@";
 
