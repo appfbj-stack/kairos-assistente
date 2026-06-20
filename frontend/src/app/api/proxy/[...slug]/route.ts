@@ -21,13 +21,11 @@ function fetchViaHttp(url: string, options: {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
     const mod = u.protocol === "https:" ? https : http;
-    const agent = new mod.Agent({ keepAlive: false });
     const req = mod.request(
       url,
       {
         method: options.method || "GET",
         headers: options.headers || {},
-        agent,
         timeout: 10000,
       },
       (res) => {
