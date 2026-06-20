@@ -15,7 +15,7 @@ function getPool(): InstanceType<typeof Pool> {
           user: process.env.POSTGRES_USER || "kairos",
           password: process.env.POSTGRES_PASSWORD || "kairos123",
         };
-    _pool = new Pool(config);
+    _pool = new Pool({ ...config, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 });
     _pool.on("error", (err) => console.error("PostgreSQL pool error:", err));
   }
   return _pool;
@@ -26,11 +26,26 @@ function toPg(sql: string): string {
   return sql
     .replace(/\?/g, () => `$${++i}`)
     .replace(/datetime\('now'\)/gi, "NOW()")
-    .replace(/datetime\('now',\s*'localtime'\)/gi, "NOW()");
+    .replace(/datetime\('now',\s*'localtime'\)/gi, "NOW()")
+    .replace(/DATE\('now',\s*'([^']+)'\)/gi, "CURRENT_DATE + INTERVAL '$1'");
 }
 
 export async function getDb(): Promise<void> {
-  await getPool().query("SELECT 1");
+  let lastErr: any;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      await getPool().query("SELECT 1");
+      return;
+    } catch (err: any) {
+      lastErr = err;
+      if (err.code !== "28P01" && err.code !== "ECONNREFUSED" && attempt < 5) {
+        await new Promise(r => setTimeout(r, attempt * 2000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
 }
 
 export async function queryAll(sql: string, params: any[] = []): Promise<any[]> {
