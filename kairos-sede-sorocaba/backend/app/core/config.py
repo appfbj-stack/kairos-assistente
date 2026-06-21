@@ -26,6 +26,14 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = ""
 
+    # ── LGPD ───────────────────────────────────────────────────────────────
+    LGPD_VERSAO_TERMO: str = "1.0.0"  # bump a cada alteração legal → reaceite automático
+    LGPD_DPO_EMAIL: str = ""  # e-mail do encarregado (DPO) — exibido nas páginas legais
+    LGPD_RETENCAO_MESES: int = 60  # tempo de retenção padrão (em meses) — informativo
+    LGPD_CONTROLADORA_NOME: str = "OBPC Sorocaba"
+    LGPD_CONTROLADORA_CNPJ: str = ""
+    LGPD_CONTROLADORA_ENDERECO: str = ""
+
     class Config:
         env_file = ".env"
 

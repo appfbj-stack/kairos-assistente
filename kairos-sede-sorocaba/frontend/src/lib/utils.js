@@ -5,9 +5,11 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-export function formatarData(data) {
+export function formatarData(data, comHora = false) {
   if (!data) return '—';
-  return new Date(data).toLocaleDateString('pt-BR');
+  return comHora
+    ? new Date(data).toLocaleString('pt-BR')
+    : new Date(data).toLocaleDateString('pt-BR');
 }
 
 export function formatarDataHora(data) {
@@ -22,6 +24,20 @@ export function formatarMoeda(valor) {
 export function formatarCPF(cpf) {
   if (!cpf) return '';
   return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+}
+
+// Mascarar CPF/RG/endereço quando o usuário logado não tem permissão de ver dados sensíveis
+export function mascararCpf(cpf) {
+  if (!cpf || cpf.includes('*')) return cpf;
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '***.$2.$3-**');
+}
+
+export function mascararEmail(email) {
+  if (!email || email.includes('*')) return email;
+  const atIndex = email.indexOf('@');
+  if (atIndex < 1) return '***';
+  const domain = email.slice(atIndex + 1);
+  return `***@${domain}`;
 }
 
 export function calcularIdade(dataNasc) {

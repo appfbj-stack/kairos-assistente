@@ -61,6 +61,13 @@ export const useAuthStore = create(
       },
 
       isSede: () => get().usuario?.perfil === 'sede',
+      isPastor: () => get().usuario?.perfil === 'pastor',
+      isSecretario: () => get().usuario?.perfil === 'secretario',
+      isLiderMinisterio: () => get().usuario?.perfil === 'lider_ministerio',
+      // Pode ver dados sensíveis (CPF, RG, endereço, e-mail)
+      canSeeSensitive: () => ['sede', 'pastor'].includes(get().usuario?.perfil),
+      // Pode acessar área admin LGPD
+      canAdminLgpd: () => get().usuario?.perfil === 'sede',
     }),
     { name: 'kairos-auth', partialize: (s) => ({ token: s.token }) }
   )

@@ -1,15 +1,17 @@
+from datetime import datetime, timezone
 from urllib.parse import quote
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_access_token
-from app.deps import get_current_user
-from app.models import Tenant, Usuario
+from app.deps import get_current_user, registrar_auditoria
+from app.models import ConsentimentoLGPD, Tenant, Usuario
 from app.services.google_oauth import exchange_code, get_auth_url, get_userinfo
 from app.services.license import verify_license
+from app.utils import new_id
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -27,7 +29,7 @@ def google_login():
     return RedirectResponse(get_auth_url())
 
 @router.get("/google/callback")
-async def google_callback(code: str | None = None, db: Session = Depends(get_db)):
+async def google_callback(code: str | None = None, request: Request = None, db: Session = Depends(get_db)):
     frontend = settings.FRONTEND_URL
     if not code:
         return RedirectResponse(f"{frontend}/login?erro=1")
@@ -54,6 +56,24 @@ async def google_callback(code: str | None = None, db: Session = Depends(get_db)
     usuario.nome = userinfo.get("name", usuario.nome)
     usuario.foto_url = userinfo.get("picture", usuario.foto_url)
     db.commit()
+
+    # Registra consentimento de login (LGPD: log de acesso ao sistema)
+    ip = request.client.host if request and request.client else None
+    ua = request.headers.get("user-agent", "")[:500] if request else None
+    consentimento = ConsentimentoLGPD(
+        id=new_id(),
+        tenant_id=usuario.tenant_id,
+        usuario_id=usuario.id,
+        versao_termo=settings.LGPD_VERSAO_TERMO,
+        finalidade="login_sistema",
+        aceito=True,
+        data_aceite=datetime.now(timezone.utc),
+        ip=ip,
+        user_agent=ua,
+    )
+    db.add(consentimento)
+    db.commit()
+    registrar_auditoria(db, usuario, "acesso", "auth", usuario.id, request, detalhes="login google oauth")
 
     token = create_access_token({"sub": usuario.id})
     return RedirectResponse(f"{frontend}/auth/callback?token={token}")

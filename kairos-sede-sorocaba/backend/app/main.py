@@ -45,9 +45,12 @@ async def lifespan(app: FastAPI):
     await _check_license()
     yield
 
-from app.routes import agenda, auth, batismos, carteirinhas, congregacoes, dashboard, membros, modules, obreiros, patrimonio, usuarios
+from app.routes import (
+    agenda, auth, batismos, carteirinhas, congregacoes, dashboard,
+    lgpd, membros, modules, obreiros, patrimonio, usuarios,
+)
 
-app = FastAPI(title="Kairos Sede Sorocaba API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Kairos Sede Sorocaba API", version="1.1.0", lifespan=lifespan)
 _origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()] if settings.CORS_ORIGINS else ["*"]
 app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -65,7 +68,8 @@ app.include_router(carteirinhas.router, prefix="/api")
 app.include_router(batismos.router, prefix="/api")
 app.include_router(modules.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
+app.include_router(lgpd.router, prefix="/api")
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "app": "Kairos Sede Sorocaba API"}
+    return {"status": "ok", "app": "Kairos Sede Sorocaba API", "lgpd_versao": settings.LGPD_VERSAO_TERMO}

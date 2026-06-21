@@ -1,9 +1,10 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_token
-from app.models import Module, Tenant, TenantModule, Usuario
+from app.models import AuditoriaLog, Module, PERFIS_SENITIVE_ACCESS, Tenant, TenantModule, Usuario
+from app.utils import new_id
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
@@ -52,3 +53,43 @@ def congregacao_filter(cu: Usuario = Depends(get_current_user)) -> str | None:
     """Mirror do middleware filtrarCongregacao original: usuários 'sede' veem tudo,
     demais perfis são restritos à própria congregação."""
     return None if cu.perfil == "sede" else cu.congregacao_id
+
+
+def can_see_sensitive(cu: Usuario = Depends(get_current_user)) -> bool:
+    """True se o usuário pode ver dados sensíveis (CPF, RG, endereço, e-mail)."""
+    return cu.perfil in PERFIS_SENITIVE_ACCESS
+
+
+def registrar_auditoria(
+    db: Session,
+    cu: Usuario | None,
+    acao: str,
+    recurso: str,
+    recurso_id: str | None = None,
+    request: Request | None = None,
+    detalhes: str | None = None,
+) -> None:
+    """Cria um registro em auditoria_logs. Falha silenciosa — não deve quebrar a requisição."""
+    try:
+        ip = None
+        user_agent = None
+        if request is not None and request.client is not None:
+            ip = request.client.host
+            user_agent = request.headers.get("user-agent", "")[:500]
+        log = AuditoriaLog(
+            id=new_id(),
+            tenant_id=cu.tenant_id if cu else 0,
+            usuario_id=cu.id if cu else None,
+            usuario_email=cu.email if cu else None,
+            acao=acao,
+            recurso=recurso,
+            recurso_id=recurso_id,
+            ip=ip,
+            user_agent=user_agent,
+            detalhes=detalhes,
+        )
+        db.add(log)
+        db.commit()
+    except Exception:
+        # Auditoria nunca deve quebrar o fluxo principal
+        db.rollback()

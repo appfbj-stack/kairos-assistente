@@ -1,6 +1,24 @@
 # PROGRESS.md — kairos-assistente
 
-## Sessão 2026-06-20 — Deploy proxy route + dashboard fixes
+## Sessão 2026-06-20 (tarde) — LGPD + Cadastro Eclesiástico no sede-sorocaba
+
+### Resumo
+Implementada conformidade LGPD (Lei 13.709/2018) + cadastro eclesiástico completo no app `kairos-sede-sorocaba`. PRD em `kairos-sede-sorocaba/docs/PRD_LGPD.md`. Ver detalhes completos em `kairos-sede-sorocaba/PROGRESS.md`.
+
+### Principais mudanças
+- Backend: 7 modelos novos, 20+ campos em Membro, módulo LGPD, auditoria, mascaramento por perfil, novos perfis `secretario` e `lider_ministerio`, sub-entidades (transferências, cargos, ministérios, cursos)
+- Frontend: 6 páginas novas (4 públicas + 2 admin), FichaMembro com 8 abas, FormMembro reescrito com 6 seções + checkbox LGPD
+- Verificações: `vite build` ok, `eslint` 0 erros, `py_compile` ok
+
+### Pendências (Next Steps)
+1. Deploy no VPS (`docker compose up -d --force-recreate --no-deps`)
+2. Configurar `.env` de produção com `LGPD_DPO_EMAIL`, `LGPD_CONTROLADORA_*`, `CORS_ORIGINS`
+3. Testar fluxo LGPD completo (criar membro, mascaramento, solicitações, auditoria)
+4. Replicar padrão LGPD para kairos-advocacia, kairos-politica, foto-agenda
+
+---
+
+## Sessão 2026-06-20 (manhã) — Deploy proxy route + dashboard fixes
 
 ### Problema
 Frontend proxy route (`/api/proxy/*`) retornava 502 "socket hang up" ao chamar o backend. Dashboard endpoint também crashava com "Empty reply from server". Backend entrava em restart loop com "password authentication failed".

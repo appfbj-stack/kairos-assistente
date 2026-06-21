@@ -1,11 +1,19 @@
 from datetime import date, datetime, timezone
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 def utcnow(): return datetime.now(timezone.utc)
 
-PERFIS = ["sede", "pastor"]
+# Perfis permitidos no sistema.
+# sede            — acesso total ao tenant (admin da igreja)
+# pastor          — acesso restrito à própria congregação, vê dados sensíveis
+# secretario      — acesso à própria congregação, SEM CPF/RG/endereço (mascaramento)
+# lider_ministerio— acesso à própria congregação, apenas resumo cadastral
+PERFIS = ["sede", "pastor", "secretario", "lider_ministerio"]
+
+# Perfis que enxergam dados sensíveis (CPF, RG, endereço completo, e-mail)
+PERFIS_SENITIVE_ACCESS = ["sede", "pastor"]
 
 # ── Module (catálogo de módulos disponíveis no ecossistema Kairos) ─────────
 class Module(Base):
@@ -70,18 +78,47 @@ class Membro(Base):
     congregacao_id: Mapped[str] = mapped_column(ForeignKey("congregacoes.id"), index=True)
     foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     nome: Mapped[str] = mapped_column(String(255))
+    # ── Dados pessoais (RGPD: base legal = consentimento + legítimo interesse) ──
     cpf: Mapped[str | None] = mapped_column(String(14), nullable=True)
     rg: Mapped[str | None] = mapped_column(String(20), nullable=True)
     data_nascimento: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     telefone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     whatsapp: Mapped[str | None] = mapped_column(String(50), nullable=True)
     endereco: Mapped[str | None] = mapped_column(String(255), nullable=True)
     estado_civil: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    naturalidade: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    profissao: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    escolaridade: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # ── Família ───────────────────────────────────────────────────────────────
+    nome_pai: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    nome_mae: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    conjuge_nome: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    data_casamento: Mapped[date | None] = mapped_column(Date, nullable=True)
+    num_filhos: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # ── Saúde (dado sensível — LGPD Art. 11) ─────────────────────────────────
+    tipo_sanguineo: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    alergias_medicacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    necessidades_especiais: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contato_emergencia_nome: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contato_emergencia_telefone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # ── Dados eclesiásticos ──────────────────────────────────────────────────
     data_conversao: Mapped[date | None] = mapped_column(Date, nullable=True)
     data_batismo: Mapped[date | None] = mapped_column(Date, nullable=True)
+    batismo_espirito_santo_em: Mapped[date | None] = mapped_column(Date, nullable=True)
+    data_entrada_congregacao: Mapped[date | None] = mapped_column(Date, nullable=True)
     cargo: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    consagracao_data: Mapped[date | None] = mapped_column(Date, nullable=True)
+    consagracao_oficiante: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    formacao_teologica: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="ativo", index=True)  # ativo | inativo | transferido | falecido
     observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # ── LGPD — consentimento registrado ──────────────────────────────────────
+    lgpd_aceite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    lgpd_data_aceite: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lgpd_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    lgpd_user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    lgpd_versao_termo: Mapped[str | None] = mapped_column(String(20), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -164,3 +201,124 @@ class Batismo(Base):
 
     membro: Mapped["Membro"] = relationship("Membro", foreign_keys=[membro_id])
     pastor: Mapped["Membro | None"] = relationship("Membro", foreign_keys=[pastor_id])
+
+
+# ── Transferência de Membro (cartório eclesiástico) ─────────────────────────
+class TransferenciaMembro(Base):
+    __tablename__ = "transferencias_membro"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    membro_id: Mapped[str] = mapped_column(ForeignKey("membros.id"), index=True)
+    congregacao_origem_id: Mapped[str | None] = mapped_column(ForeignKey("congregacoes.id"), nullable=True)
+    congregacao_destino_id: Mapped[str | None] = mapped_column(ForeignKey("congregacoes.id"), nullable=True)
+    congregacao_origem_nome: Mapped[str | None] = mapped_column(String(255), nullable=True)  # livre p/ igrejas externas
+    congregacao_destino_nome: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    data: Mapped[date] = mapped_column(Date)
+    motivo: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    documento_comprovante_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    membro: Mapped["Membro"] = relationship("Membro", foreign_keys=[membro_id])
+
+
+# ── Histórico de Cargos (cronológico) ────────────────────────────────────────
+class HistoricoCargo(Base):
+    __tablename__ = "historico_cargos"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    membro_id: Mapped[str] = mapped_column(ForeignKey("membros.id"), index=True)
+    congregacao_id: Mapped[str | None] = mapped_column(ForeignKey("congregacoes.id"), nullable=True)
+    cargo: Mapped[str] = mapped_column(String(100))
+    data_inicio: Mapped[date] = mapped_column(Date)
+    data_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
+    oficializado_por: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    membro: Mapped["Membro"] = relationship("Membro", foreign_keys=[membro_id])
+
+
+# ── Ministério do Membro (participação em ministérios) ──────────────────────
+class MinisterioMembro(Base):
+    __tablename__ = "ministerios_membro"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    membro_id: Mapped[str] = mapped_column(ForeignKey("membros.id"), index=True)
+    ministerio: Mapped[str] = mapped_column(String(100))  # louvor | infantil | diaconia | missões | etc
+    funcao: Mapped[str | None] = mapped_column(String(100), nullable=True)  # líder | membro | coordenador
+    data_inicio: Mapped[date] = mapped_column(Date)
+    data_fim: Mapped[date | None] = mapped_column(Date, nullable=True)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    membro: Mapped["Membro"] = relationship("Membro", foreign_keys=[membro_id])
+
+
+# ── Curso / Formação do Membro ───────────────────────────────────────────────
+class CursoFormacao(Base):
+    __tablename__ = "cursos_formacao"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    membro_id: Mapped[str] = mapped_column(ForeignKey("membros.id"), index=True)
+    curso: Mapped[str] = mapped_column(String(255))
+    instituicao: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    data_conclusao: Mapped[date | None] = mapped_column(Date, nullable=True)
+    certificacao_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    membro: Mapped["Membro"] = relationship("Membro", foreign_keys=[membro_id])
+
+
+# ── Consentimento LGPD (histórico de aceites — uma linha por aceite) ─────────
+class ConsentimentoLGPD(Base):
+    __tablename__ = "consentimentos_lgpd"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    # titular pode ser um Membro (cadastro) ou um Usuario (login no sistema)
+    membro_id: Mapped[str | None] = mapped_column(ForeignKey("membros.id"), nullable=True, index=True)
+    usuario_id: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True, index=True)
+    versao_termo: Mapped[str] = mapped_column(String(20))
+    finalidade: Mapped[str] = mapped_column(String(100))  # cadastro_membro | login_sistema | etc
+    aceito: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    data_aceite: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+# ── Auditoria (log de acessos e alterações a dados pessoais) ────────────────
+class AuditoriaLog(Base):
+    __tablename__ = "auditoria_logs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    usuario_id: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True, index=True)
+    usuario_email: Mapped[str | None] = mapped_column(String(255), nullable=True)  # desnormalizado p/ histórico
+    acao: Mapped[str] = mapped_column(String(30), index=True)  # acesso | criacao | alteracao | remocao | exportacao
+    recurso: Mapped[str] = mapped_column(String(50), index=True)  # membros | obreiros | carteirinhas | usuarios | lgpd
+    recurso_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    detalhes: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON livre com campos alterados
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+# ── Solicitação LGPD (canal do titular — Art. 18 LGPD) ──────────────────────
+class SolicitacaoLGPD(Base):
+    __tablename__ = "solicitacoes_lgpd"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    # titular (não precisa ser usuário do sistema)
+    titular_nome: Mapped[str] = mapped_column(String(255))
+    titular_email: Mapped[str] = mapped_column(String(255), index=True)
+    titular_cpf: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    titular_telefone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    tipo: Mapped[str] = mapped_column(String(30), index=True)  # acesso | retificacao | exclusao | portabilidade | revogacao
+    descricao: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(30), default="recebida", index=True)  # recebida | em_andamento | concluida | recusada
+    atendido_por: Mapped[str | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    atendido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resposta: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

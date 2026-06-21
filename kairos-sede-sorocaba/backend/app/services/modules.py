@@ -12,6 +12,7 @@ MODULOS_PADRAO = [
     {"slug": "congregacoes", "nome": "Congregações"},
     {"slug": "usuarios", "nome": "Usuários"},
     {"slug": "dashboard", "nome": "Dashboard"},
+    {"slug": "lgpd", "nome": "LGPD — Proteção de Dados"},
 ]
 
 def seed_modules():

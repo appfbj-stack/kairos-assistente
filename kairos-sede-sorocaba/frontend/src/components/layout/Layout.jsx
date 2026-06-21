@@ -4,7 +4,7 @@ import { useAuthStore } from '../../stores/auth';
 import { cn } from '../../lib/utils';
 import {
   LayoutDashboard, Users, UserCheck, Building2, Package,
-  Calendar, LogOut,
+  Calendar, LogOut, ShieldCheck,
   Menu, X, CreditCard
 } from 'lucide-react';
 
@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { href: '/congregacoes', label: 'Congregações', icon: Building2, modulo: 'congregacoes', somentesSede: true },
   { href: '/patrimonio', label: 'Patrimônio', icon: Package, modulo: 'patrimonio' },
   { href: '/agenda', label: 'Agenda', icon: Calendar, modulo: 'agenda' },
-
+  { href: '/lgpd/solicitacoes', label: 'LGPD', icon: ShieldCheck, modulo: 'lgpd', somentesSede: true },
 ];
 
 export default function Layout({ children }) {

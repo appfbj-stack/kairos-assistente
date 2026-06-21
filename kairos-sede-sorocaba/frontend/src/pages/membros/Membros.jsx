@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import { formatarData, calcularIdade, STATUS_MEMBRO } from '../../lib/utils';
-import { Plus, Search, Filter, ChevronLeft, ChevronRight, Edit, Trash2, User } from 'lucide-react';
+import { useAuthStore } from '../../stores/auth';
+import { formatarData, calcularIdade, STATUS_MEMBRO, mascararCpf } from '../../lib/utils';
+import { Plus, Search, ChevronLeft, ChevronRight, Edit, Trash2, User, Eye } from 'lucide-react';
 import FormMembro from './FormMembro';
 
 export default function Membros() {
@@ -12,6 +14,9 @@ export default function Membros() {
   const [modalAberto, setModalAberto] = useState(false);
   const [membroEditando, setMembroEditando] = useState(null);
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const { canSeeSensitive } = useAuthStore();
+  const verSensivel = canSeeSensitive();
 
   const { data, isLoading } = useQuery({
     queryKey: ['membros', busca, status, page],
@@ -28,6 +33,12 @@ export default function Membros() {
   const abrirCriacao = () => { setMembroEditando(null); setModalAberto(true); };
   const fecharModal = () => { setModalAberto(false); setMembroEditando(null); };
 
+  const fmtCpf = (cpf) => {
+    if (!cpf) return '—';
+    if (cpf.includes('*')) return cpf; // já mascarado pelo backend
+    return verSensivel ? cpf : mascararCpf(cpf);
+  };
+
   const totalPaginas = Math.ceil((data?.total || 0) / 20);
 
   return (
@@ -41,6 +52,13 @@ export default function Membros() {
           <Plus size={16} /> Novo Membro
         </button>
       </div>
+
+      {/* Aviso de mascaramento para perfis sem acesso a dados sensíveis */}
+      {!verSensivel && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2">
+          Seu perfil visualiza dados pessoais parciais (CPF/endereço mascarados). Para acesso completo, contate a sede.
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex gap-2 flex-wrap">
@@ -82,19 +100,22 @@ export default function Membros() {
             <div className="lg:hidden divide-y">
               {data?.dados?.map(m => (
                 <div key={m.id} className="p-4 flex items-center gap-3">
-                  {m.foto_url
-                    ? <img src={m.foto_url} alt={m.nome} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
-                    : <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0">{m.nome[0]}</div>
-                  }
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{m.nome}</p>
-                    <p className="text-xs text-gray-500">{m.telefone || 'Sem telefone'} • {calcularIdade(m.data_nascimento)} anos</p>
-                  </div>
+                  <button onClick={() => navigate(`/membros/${m.id}`)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                    {m.foto_url
+                      ? <img src={m.foto_url} alt={m.nome} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      : <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0">{m.nome[0]}</div>
+                    }
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{m.nome}</p>
+                      <p className="text-xs text-gray-500">{m.telefone || 'Sem telefone'} • {calcularIdade(m.data_nascimento)} anos</p>
+                    </div>
+                  </button>
                   <div className="flex flex-col items-end gap-1">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_MEMBRO[m.status]?.color}`}>
                       {STATUS_MEMBRO[m.status]?.label}
                     </span>
                     <div className="flex gap-1">
+                      <button onClick={() => navigate(`/membros/${m.id}`)} className="p-1 text-gray-400 hover:text-blue-600"><Eye size={14} /></button>
                       <button onClick={() => abrirEdicao(m)} className="p-1 text-gray-400 hover:text-blue-600"><Edit size={14} /></button>
                       <button onClick={() => deletar.mutate(m.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 size={14} /></button>
                     </div>
@@ -118,7 +139,7 @@ export default function Membros() {
               </thead>
               <tbody className="divide-y">
                 {data?.dados?.map(m => (
-                  <tr key={m.id} className="hover:bg-gray-50">
+                  <tr key={m.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/membros/${m.id}`)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {m.foto_url
@@ -126,9 +147,10 @@ export default function Membros() {
                           : <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700">{m.nome[0]}</div>
                         }
                         <span className="font-medium">{m.nome}</span>
+                        {!m.lgpd_aceite && <span title="Sem consentimento LGPD" className="text-amber-600 text-xs">⚠</span>}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-500">{m.cpf || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{fmtCpf(m.cpf)}</td>
                     <td className="px-4 py-3 text-gray-500">{formatarData(m.data_nascimento)}</td>
                     <td className="px-4 py-3 text-gray-500">{m.telefone || '—'}</td>
                     <td className="px-4 py-3 text-gray-500">{m.cargo || '—'}</td>
@@ -137,10 +159,11 @@ export default function Membros() {
                         {STATUS_MEMBRO[m.status]?.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <button onClick={() => abrirEdicao(m)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded"><Edit size={15} /></button>
-                        <button onClick={() => { if (confirm('Remover membro?')) deletar.mutate(m.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded"><Trash2 size={15} /></button>
+                        <button onClick={() => navigate(`/membros/${m.id}`)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded" title="Ver ficha"><Eye size={15} /></button>
+                        <button onClick={() => abrirEdicao(m)} className="p-1.5 text-gray-400 hover:text-blue-600 rounded" title="Editar"><Edit size={15} /></button>
+                        <button onClick={() => { if (confirm('Remover membro?')) deletar.mutate(m.id); }} className="p-1.5 text-gray-400 hover:text-red-600 rounded" title="Remover"><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>

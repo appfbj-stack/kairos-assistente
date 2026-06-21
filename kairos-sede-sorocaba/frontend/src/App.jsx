@@ -7,11 +7,18 @@ import Login from './pages/auth/Login';
 import Callback from './pages/auth/Callback';
 import Dashboard from './pages/dashboard/Dashboard';
 import Membros from './pages/membros/Membros';
+import FichaMembro from './pages/membros/FichaMembro';
 import Obreiros from './pages/obreiros/Obreiros';
 import Congregacoes from './pages/congregacoes/Congregacoes';
 import Patrimonio from './pages/patrimonio/Patrimonio';
 import Agenda from './pages/agenda/Agenda';
 import Carteirinhas from './pages/carteirinhas/Carteirinhas';
+import PoliticaPrivacidade from './pages/lgpd/PoliticaPrivacidade';
+import TermosUso from './pages/lgpd/TermosUso';
+import Consentimento from './pages/lgpd/Consentimento';
+import SolicitarExclusao from './pages/lgpd/SolicitarExclusao';
+import Solicitacoes from './pages/lgpd/Solicitacoes';
+import Auditoria from './pages/lgpd/Auditoria';
 
 
 const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 30000, retry: 1 } } });
@@ -39,6 +46,15 @@ function RotaModulo({ slug, children }) {
   return children;
 }
 
+// Wrapper para páginas públicas (sem login, sem Layout)
+function RotaPublica({ children }) {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
   const { carregarUsuario, carregarModulos } = useAuthStore();
   useEffect(() => { carregarUsuario(); }, []);
@@ -48,6 +64,13 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <BrowserRouter>
         <Routes>
+          {/* Públicas — LGPD */}
+          <Route path="/politica-de-privacidade" element={<RotaPublica><PoliticaPrivacidade /></RotaPublica>} />
+          <Route path="/termos-de-uso" element={<RotaPublica><TermosUso /></RotaPublica>} />
+          <Route path="/consentimento-lgpd" element={<RotaPublica><Consentimento /></RotaPublica>} />
+          <Route path="/solicitar-exclusao-de-dados" element={<RotaPublica><SolicitarExclusao /></RotaPublica>} />
+
+          {/* Auth */}
           <Route path="/login" element={<Login />} />
           <Route path="/auth/callback" element={<Callback />} />
           <Route path="/acesso-negado" element={
@@ -60,16 +83,21 @@ export default function App() {
               </div>
             </div>
           } />
+
+          {/* Protegidas */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard"    element={<RotaProtegida><RotaModulo slug="dashboard"><Dashboard /></RotaModulo></RotaProtegida>} />
           <Route path="/membros"      element={<RotaProtegida><RotaModulo slug="membros"><Membros /></RotaModulo></RotaProtegida>} />
+          <Route path="/membros/:id"  element={<RotaProtegida><RotaModulo slug="membros"><FichaMembro /></RotaModulo></RotaProtegida>} />
           <Route path="/obreiros"     element={<RotaProtegida><RotaModulo slug="obreiros"><Obreiros /></RotaModulo></RotaProtegida>} />
           <Route path="/carteirinhas" element={<RotaProtegida><RotaModulo slug="carteirinhas"><Carteirinhas /></RotaModulo></RotaProtegida>} />
           <Route path="/congregacoes" element={<RotaProtegida><SomentesSede><RotaModulo slug="congregacoes"><Congregacoes /></RotaModulo></SomentesSede></RotaProtegida>} />
           <Route path="/patrimonio"   element={<RotaProtegida><RotaModulo slug="patrimonio"><Patrimonio /></RotaModulo></RotaProtegida>} />
           <Route path="/agenda"       element={<RotaProtegida><RotaModulo slug="agenda"><Agenda /></RotaModulo></RotaProtegida>} />
+          <Route path="/lgpd/solicitacoes" element={<RotaProtegida><SomentesSede><RotaModulo slug="lgpd"><Solicitacoes /></RotaModulo></SomentesSede></RotaProtegida>} />
+          <Route path="/lgpd/auditoria"    element={<RotaProtegida><SomentesSede><RotaModulo slug="lgpd"><Auditoria /></RotaModulo></SomentesSede></RotaProtegida>} />
 
-          <Route path="*"             element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
