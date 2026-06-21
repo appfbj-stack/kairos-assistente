@@ -67,7 +67,7 @@ export default function SolicitarExclusao() {
 
         {enviar.isError && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm flex items-center gap-2">
-            <AlertCircle size={16} />
+            <CircleAlert size={16} />
             <span>Erro ao enviar. Verifique os campos e tente novamente.</span>
           </div>
         )}
