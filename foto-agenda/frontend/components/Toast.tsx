@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Check, AlertCircle } from 'lucide-react';
+import { Check, CircleAlert } from 'lucide-react';
 
 interface ToastProps {
   message: string;
@@ -22,7 +22,7 @@ export const Toast: React.FC<ToastProps> = ({ message, type = 'success', onClose
           ? 'bg-white dark:bg-slate-800 text-green-700 dark:text-green-400 border-green-100 dark:border-green-900' 
           : 'bg-white dark:bg-slate-800 text-red-700 dark:text-red-400 border-red-100 dark:border-red-900'
       }`}>
-        {type === 'success' ? <Check size={18} strokeWidth={3} /> : <AlertCircle size={18} strokeWidth={3} />}
+        {type === 'success' ? <Check size={18} strokeWidth={3} /> : <CircleAlert size={18} strokeWidth={3} />}
         <span className="font-bold text-sm">{message}</span>
       </div>
     </div>
