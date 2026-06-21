@@ -37,8 +37,7 @@ export default function Login() {
         email: email.trim(),
         password,
       });
-      localStorage.setItem('kairos_token', data.token);
-      login(data.token);
+      await login(data.token);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const msg = err.response?.data?.detail || 'Erro ao fazer login. Verifique suas credenciais.';

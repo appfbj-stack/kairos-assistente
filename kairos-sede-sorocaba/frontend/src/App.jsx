@@ -40,9 +40,19 @@ function SomentesSede({ children }) {
   return children;
 }
 
+function Loading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 function RotaModulo({ slug, children }) {
   const { moduloAtivo } = useAuthStore();
-  if (!moduloAtivo(slug)) return <Navigate to="/dashboard" replace />;
+  const ativo = moduloAtivo(slug);
+  if (ativo === null) return <Loading />;
+  if (!ativo) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -86,7 +96,7 @@ export default function App() {
 
           {/* Protegidas */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard"    element={<RotaProtegida><RotaModulo slug="dashboard"><Dashboard /></RotaModulo></RotaProtegida>} />
+          <Route path="/dashboard"    element={<RotaProtegida><Dashboard /></RotaProtegida>} />
           <Route path="/membros"      element={<RotaProtegida><RotaModulo slug="membros"><Membros /></RotaModulo></RotaProtegida>} />
           <Route path="/membros/:id"  element={<RotaProtegida><RotaModulo slug="membros"><FichaMembro /></RotaModulo></RotaProtegida>} />
           <Route path="/obreiros"     element={<RotaProtegida><RotaModulo slug="obreiros"><Obreiros /></RotaModulo></RotaProtegida>} />

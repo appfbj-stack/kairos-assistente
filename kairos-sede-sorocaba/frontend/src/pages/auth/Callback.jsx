@@ -17,9 +17,10 @@ export default function Callback() {
     console.log('[Callback] Token encontrado:', token ? 'SIM' : 'NÃO');
 
     if (token) {
-      localStorage.setItem('kairos_token', token);
-      login(token);
-      setTimeout(() => navigate('/dashboard', { replace: true }), 500);
+      (async () => {
+        await login(token);
+        navigate('/dashboard', { replace: true });
+      })();
     } else {
       setErro('Token não recebido. URL: ' + window.location.href);
     }

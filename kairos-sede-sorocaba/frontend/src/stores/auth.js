@@ -10,18 +10,18 @@ export const useAuthStore = create(
       carregando: false,
       modulos: null,
 
-      login: (token) => {
+      login: async (token) => {
         localStorage.setItem('kairos_token', token);
         set({ token, carregando: true });
-        api.get('/auth/me')
-          .then(({ data }) => {
-            set({ usuario: data, carregando: false });
-            get().carregarModulos();
-          })
-          .catch((err) => {
-            console.error('[Auth] Falha ao carregar usuário:', err.response?.status, err.message);
-            get().logout();
-          });
+        try {
+          const { data } = await api.get('/auth/me');
+          set({ usuario: data, carregando: false });
+          await get().carregarModulos();
+        } catch (err) {
+          console.error('[Auth] Falha ao carregar usuário:', err.response?.status, err.message);
+          get().logout();
+          throw err;
+        }
       },
 
       carregarUsuario: async () => {
@@ -50,7 +50,7 @@ export const useAuthStore = create(
 
       moduloAtivo: (slug) => {
         const { modulos } = get();
-        if (!modulos) return false;
+        if (modulos === null) return null;
         const m = modulos.find((m) => m.slug === slug);
         return m?.active === true;
       },

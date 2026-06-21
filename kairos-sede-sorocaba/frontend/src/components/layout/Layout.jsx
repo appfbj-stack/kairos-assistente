@@ -21,9 +21,10 @@ const NAV_ITEMS = [
 
 export default function Layout({ children }) {
   const [sidebarAberta, setSidebarAberta] = useState(false);
-  const { usuario, logout, isSede, moduloAtivo } = useAuthStore();
+  const { usuario, logout, isSede, moduloAtivo, modulos } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const modulosCarregando = modulos === null;
 
   const itens = NAV_ITEMS.filter(i => {
     if (i.somentesSede && !isSede()) return false;
@@ -63,7 +64,13 @@ export default function Layout({ children }) {
 
         {/* Navegação */}
         <nav className="flex-1 overflow-y-auto py-4">
-          {itens.map(({ href, label, icon: Icon }) => (
+          {modulosCarregando ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : itens.length === 0 ? (
+            <p className="text-blue-300 text-xs text-center px-4 py-8">Nenhum módulo disponível</p>
+          ) : itens.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               to={href}
