@@ -39,7 +39,7 @@ class Tenant(Base):
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
-# ── Usuário (acesso ao sistema, autenticado via Google OAuth) ──────────────
+# ── Usuário (acesso ao sistema, autenticado via Google OAuth + senha) ──────
 class Usuario(Base):
     __tablename__ = "usuarios"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -49,6 +49,7 @@ class Usuario(Base):
     perfil: Mapped[str] = mapped_column(String(20), default="pastor")  # sede | pastor
     congregacao_id: Mapped[str | None] = mapped_column(ForeignKey("congregacoes.id"), nullable=True)
     foto_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)

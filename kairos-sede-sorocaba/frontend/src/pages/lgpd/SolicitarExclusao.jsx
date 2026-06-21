@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, CircleCheckBig, CircleAlert } from 'lucide-react';
 
 const TIPOS = [
   { value: 'acesso', label: 'Acesso aos dados (Art. 18, II)' },

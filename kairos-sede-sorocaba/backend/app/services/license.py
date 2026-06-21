@@ -1,4 +1,3 @@
-import os
 import httpx
 from app.core.config import settings
 
@@ -14,7 +13,11 @@ async def verify_license() -> dict:
     try:
         async with httpx.AsyncClient(timeout=10.0, auth=auth) as client:
             res = await client.get(url, params=params)
-            return res.json()
+            data = res.json()
+            if res.is_error or not data.get("valid"):
+                print(f"⚠ Licença inválida ou erro: {data}")
+                return {"valid": False, "status": "error", "message": data.get("error", "Licença inválida")}
+            return data
     except Exception as e:
         print(f"DEBUG license error: {type(e).__name__}: {e}")
         return {"valid": True, "status": "unknown", "message": "Kairos Admin inacessível"}
