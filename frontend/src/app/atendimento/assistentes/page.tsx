@@ -102,11 +102,7 @@ export default function AssistentesPage() {
     try { await api.atendimento.assistants.delete(empresaId, id); load(empresaId); } catch {}
   }
 
-  const chatUrl = slug
-    ? typeof window !== "undefined"
-      ? window.location.origin + "/assistente/" + slug
-      : ""
-    : "";
+  const chatUrl = slug ? "https://assistentetop.fbautomacao.space/assistente/" + slug : "";
 
   function copyUrl() {
     if (chatUrl) {
