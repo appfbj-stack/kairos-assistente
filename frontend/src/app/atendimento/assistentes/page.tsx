@@ -33,11 +33,17 @@ export default function AssistentesPage() {
 
   useEffect(() => {
     const eid = localStorage.getItem("empresa_id") || "";
-    const s = localStorage.getItem("empresa_slug") || "";
     setEmpresaId(eid);
-    setSlug(s);
-    if (eid) load(eid);
-    else setLoading(false);
+    if (eid) {
+      load(eid);
+      // Busca o slug da empresa via API
+      api.core.empresas.list().then((empresas: any[]) => {
+        const empresa = empresas.find((e: any) => e.id === eid);
+        if (empresa?.slug) setSlug(empresa.slug);
+      }).catch(() => {});
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   async function load(eid: string) {
