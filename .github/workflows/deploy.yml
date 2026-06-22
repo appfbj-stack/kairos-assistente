@@ -1,0 +1,26 @@
+name: Deploy para VPS (Dokploy)
+
+on:
+  push:
+      branches: [main]
+        workflow_dispatch:
+
+        jobs:
+          deploy:
+              name: Notifica Dokploy para redeploy
+                  runs-on: ubuntu-latest
+                      steps:
+                            - name: Trigger redeploy no Dokploy
+                                    run: |
+                                              echo "Disparando redeploy no Dokploy..."
+                                                        STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                                                                    -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+                                                                                -H "Content-Type: application/json" \
+                                                                                            --max-time 30)
+                                                                                                      echo "Status da resposta: $STATUS"
+                                                                                                                if [ "$STATUS" != "200" ] && [ "$STATUS" != "201" ] && [ "$STATUS" != "204" ]; then
+                                                                                                                            echo "AVISO: Dokploy retornou status $STATUS"
+                                                                                                                                        echo "Verifique se DOKPLOY_WEBHOOK_URL esta configurado em Settings > Secrets."
+                                                                                                                                                  else
+                                                                                                                                                              echo "Redeploy disparado com sucesso!"
+                                                                                                                                                                        fi
