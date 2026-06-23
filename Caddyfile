@@ -1,0 +1,17 @@
+# Kairos Assistente - Caddyfile
+# Copia este arquivo para /etc/caddy/Caddyfile no VPS e executa: systemctl reload caddy
+
+# Painel Admin
+admin.fbautomacao.space {
+  reverse_proxy localhost:3008
+}
+
+# API Backend
+api.admin.fbautomacao.space {
+  reverse_proxy localhost:3010
+}
+
+# Chat de Atendimento IA (URL publica para WhatsApp/Instagram)
+assistentetop.fbautomacao.space {
+  reverse_proxy localhost:3008
+}
