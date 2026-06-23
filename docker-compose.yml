@@ -1,70 +1,72 @@
 services:
   postgres:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_DB=kairos
-      - POSTGRES_USER=kairos
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-    networks:
-      - kairos_network
+      image: postgres:16-alpine
+          environment:
+                - POSTGRES_DB=kairos
+                      - POSTGRES_USER=kairos
+                            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+                                volumes:
+                                      - postgres_data:/var/lib/postgresql/data
+                                          healthcheck:
+                                                test: ["CMD-SHELL", "pg_isready -U kairos -d kairos"]
+                                                      interval: 5s
+                                                            timeout: 5s
+                                                                  retries: 10
+                                                                      restart: unless-stopped
+                                                                          networks:
+                                                                                - kairos_network
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    environment:
-      - PORT=3010
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=kairos
-      - POSTGRES_USER=kairos
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      # Protege toda a API exceto /api/license/verify (consultado sem credencial pelos apps satélites)
-      - BASIC_AUTH_USER=${BASIC_AUTH_USER}
-      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
-    ports:
-      - "3010:3010"
-    volumes:
-      - kairos_data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - kairos_network
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=https://api.${ADMIN_DOMAIN}/api
-    environment:
-      # Protege o painel com a mesma senha da API (checado em middleware.ts)
-      - BASIC_AUTH_USER=${BASIC_AUTH_USER}
-      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
-    ports:
-      - "3008:3000"
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - kairos_network
-
-volumes:
-  postgres_data:
-  kairos_data:
-
-networks:
-  kairos_network:
-    external: true
+                                                                                  backend:
+                                                                                      build:
+                                                                                            context: ./backend
+                                                                                                  dockerfile: Dockerfile
+                                                                                                      environment:
+                                                                                                            - PORT=3010
+                                                                                                                  - POSTGRES_HOST=postgres
+                                                                                                                        - POSTGRES_PORT=5432
+                                                                                                                              - POSTGRES_DB=kairos
+                                                                                                                                    - POSTGRES_USER=kairos
+                                                                                                                                          - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+                                                                                                                                                - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+                                                                                                                                                      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+                                                                                                                                                            # Protege toda a API exceto /api/license/verify (consultado sem credencial pelos apps satelites)
+                                                                                                                                                                  - BASIC_AUTH_USER=${BASIC_AUTH_USER}
+                                                                                                                                                                        - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+                                                                                                                                                                            ports:
+                                                                                                                                                                                  - "3010:3010"
+                                                                                                                                                                                      volumes:
+                                                                                                                                                                                            - kairos_data:/app/data
+                                                                                                                                                                                                depends_on:
+                                                                                                                                                                                                      postgres:
+                                                                                                                                                                                                              condition: service_healthy
+                                                                                                                                                                                                                  restart: unless-stopped
+                                                                                                                                                                                                                      networks:
+                                                                                                                                                                                                                            - kairos_network
+                                                                                                                                                                                                                            
+                                                                                                                                                                                                                              frontend:
+                                                                                                                                                                                                                                  build:
+                                                                                                                                                                                                                                        context: ./frontend
+                                                                                                                                                                                                                                              dockerfile: Dockerfile
+                                                                                                                                                                                                                                                    args:
+                                                                                                                                                                                                                                                            - NEXT_PUBLIC_API_URL=https://api.${ADMIN_DOMAIN}/api
+                                                                                                                                                                                                                                                                    - NEXT_PUBLIC_BASIC_AUTH_USER=${BASIC_AUTH_USER}
+                                                                                                                                                                                                                                                                            - NEXT_PUBLIC_BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+                                                                                                                                                                                                                                                                                environment:
+                                                                                                                                                                                                                                                                                      # Protege o painel com a mesma senha da API (checado em middleware.ts)
+                                                                                                                                                                                                                                                                                            - BASIC_AUTH_USER=${BASIC_AUTH_USER}
+                                                                                                                                                                                                                                                                                                  - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+                                                                                                                                                                                                                                                                                                      ports:
+                                                                                                                                                                                                                                                                                                            - "3008:3000"
+                                                                                                                                                                                                                                                                                                                depends_on:
+                                                                                                                                                                                                                                                                                                                      - backend
+                                                                                                                                                                                                                                                                                                                          restart: unless-stopped
+                                                                                                                                                                                                                                                                                                                              networks:
+                                                                                                                                                                                                                                                                                                                                    - kairos_network
+                                                                                                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                                                                                                    volumes:
+                                                                                                                                                                                                                                                                                                                                      postgres_data:
+                                                                                                                                                                                                                                                                                                                                        kairos_data:
+                                                                                                                                                                                                                                                                                                                                        
+                                                                                                                                                                                                                                                                                                                                        networks:
+                                                                                                                                                                                                                                                                                                                                          kairos_network:
+                                                                                                                                                                                                                                                                                                                                              external: true
