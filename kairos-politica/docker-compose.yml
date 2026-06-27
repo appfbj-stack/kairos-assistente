@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: kairos
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - kairos_politica_pg18:/var/lib/postgresql
 
   backend:
     build:
@@ -42,4 +42,4 @@ services:
       - "3041:80"
 
 volumes:
-  pg_data:
+  kairos_politica_pg18:
