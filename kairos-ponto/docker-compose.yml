@@ -1,0 +1,59 @@
+# Kairos Ponto — stack independente, com banco PRÓPRIO (separado do Kairos Admin).
+# A integração com o Kairos Admin é apenas via API de licenciamento (rede kairos_network).
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: kairos_ponto
+      POSTGRES_USER: kairos_ponto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kairos_ponto}
+    volumes:
+      - ponto_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kairos_ponto"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    ports:
+      - "8040:8040"
+    environment:
+      - PORT=8040
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=kairos_ponto
+      - POSTGRES_USER=kairos_ponto
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-kairos_ponto}
+      - PONTO_JWT_SECRET=${PONTO_JWT_SECRET:-troque-esta-chave}
+      - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-admin@kairosponto.com}
+      - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-admin123}
+      - KAIROS_ADMIN_URL=${KAIROS_ADMIN_URL:-http://kairos-backend:3010}
+      - KAIROS_APP_SLUG=kairos-ponto
+      - LICENSE_FAIL_OPEN=${LICENSE_FAIL_OPEN:-true}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - FACE_PROVIDER=${FACE_PROVIDER:-none}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - default
+      - kairos_network
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8040/api}
+    ports:
+      - "3060:3060"
+    depends_on:
+      - backend
+
+volumes:
+  ponto_postgres_data:
+
+networks:
+  # Rede compartilhada com o Kairos Admin (criada pelo compose do Admin) para a
+  # verificação de licença via http://kairos-backend:3010. Opcional em dev.
+  kairos_network:
+    external: true
