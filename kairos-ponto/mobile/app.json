@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Kairos Ponto",
+    "slug": "kairos-ponto",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "kairosponto",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#5c7cfa"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "space.fbautomacao.kairosponto",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Usamos sua localização para validar o registro de ponto dentro da área da empresa.",
+        "NSCameraUsageDescription": "Usamos a câmera para a selfie de reconhecimento facial no registro de ponto."
+      }
+    },
+    "android": {
+      "package": "space.fbautomacao.kairosponto",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-location", { "locationWhenInUsePermission": "Validar o registro de ponto dentro da área da empresa." }],
+      ["expo-camera", { "cameraPermission": "Selfie para o reconhecimento facial no registro de ponto." }]
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.0.10:8040/api"
+    }
+  }
+}

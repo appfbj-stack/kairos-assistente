@@ -1,48 +1,77 @@
-# Kairos Ponto — App Mobile (React Native / Expo)
+# Kairos Ponto — App Mobile (Expo / React Native)
 
-O PRD (seção 3) prevê um app mobile em **React Native + Expo** para o registro
-de ponto dos funcionários (entrada/saída com GPS, selfie e dispositivo).
+App do **funcionário** para bater ponto pelo celular: login, registro de ponto
+com **GPS + selfie** (reconhecimento facial), histórico com banco de horas e
+solicitações. Consome a mesma API REST do backend (`../backend`).
 
-## Status
+Stack: **Expo SDK 52** + **expo-router** (file-based) + `expo-location` +
+`expo-camera` + `expo-secure-store`.
 
-Nesta primeira leva, o registro de ponto do funcionário já está **funcional via
-web** em `frontend/src/app/ponto/page.tsx` — uma página mobile-first (PWA) que
-usa a `geolocation` e a câmera (`getUserMedia`) do navegador, batendo na mesma
-API que o app nativo consumirá. Isso entrega o fluxo do PRD sem bloquear no
-empacotamento nativo.
+## Rodar no celular (desenvolvimento)
 
-## Como o app nativo se conecta
+1. Instale o **Expo Go** no seu celular (Play Store / App Store).
+2. Configure a URL da API acessível pelo celular (o backend precisa estar
+   rodando e o celular na **mesma rede Wi‑Fi** do seu computador):
+   ```bash
+   cp .env.example .env
+   # edite EXPO_PUBLIC_API_URL com o IP da sua máquina, ex: http://192.168.0.10:8040/api
+   ```
+   > Use o IP da máquina, **não** `localhost` (no celular, localhost é o próprio
+   > telefone). Descubra com `ip addr` (Linux) / `ipconfig` (Windows) / `ifconfig` (Mac).
+3. Instale e inicie:
+   ```bash
+   npm install
+   npm start
+   ```
+4. Escaneie o QR Code que aparece no terminal com o **Expo Go**. O app abre no celular.
 
-O app Expo consome exatamente os mesmos endpoints REST do backend:
+## Gerar APK / app instalável (produção)
 
-| Ação | Endpoint |
-|---|---|
-| Login | `POST /api/users/auth/login` → guarda o JWT |
-| Marcações de hoje + próximo tipo | `GET /api/ponto/registros/hoje` |
-| Bater ponto | `POST /api/ponto/registros` `{ tipo, gps_lat, gps_lng, selfie, dispositivo }` |
-| Histórico | `GET /api/ponto/registros` |
-| Solicitações | `GET/POST /api/solicitacoes` |
-| Banco de horas | `GET /api/banco-horas/saldo` |
-| Notificações | `GET /api/notificacoes` |
+Com [EAS Build](https://docs.expo.dev/build/introduction/) (build na nuvem da Expo):
 
-Bibliotecas Expo previstas: `expo-location` (GPS), `expo-camera` (selfie),
-`expo-secure-store` (JWT), `expo-notifications` (push — PRD seção 17).
+```bash
+npm install -g eas-cli
+eas login
+eas build -p android --profile preview   # gera um APK para instalar direto
+eas build -p ios --profile preview       # requer conta Apple Developer
+```
 
-## Scaffold sugerido (próxima fase)
+Defina a URL de produção da API antes do build (no `app.json` → `extra.apiUrl`
+ou via variável `EXPO_PUBLIC_API_URL` no perfil do EAS).
+
+## Estrutura
 
 ```
 mobile/
-├── app.json
-├── App.tsx
+├── app/
+│   ├── _layout.tsx            # Stack raiz
+│   ├── index.tsx              # redireciona conforme sessão (SecureStore)
+│   ├── login.tsx
+│   └── (app)/
+│       ├── _layout.tsx        # Tabs (Bater Ponto / Histórico / Solicitações) + sair
+│       ├── ponto.tsx          # câmera (selfie) + GPS + registro
+│       ├── historico.tsx      # marcações do mês + saldo de banco de horas
+│       └── solicitacoes.tsx   # criar e acompanhar solicitações
 ├── src/
-│   ├── api.ts          # cliente REST (mesma base do frontend/src/services/api.ts)
-│   ├── screens/
-│   │   ├── Login.tsx
-│   │   ├── BaterPonto.tsx   # expo-location + expo-camera
-│   │   ├── Historico.tsx
-│   │   └── Solicitacoes.tsx
-│   └── hooks/useAuth.ts
+│   ├── api.ts                 # cliente REST + sessão (expo-secure-store)
+│   └── theme.ts
+├── app.json                   # permissões iOS/Android, plugins, extra.apiUrl
+└── .env.example
 ```
 
-Como o backend e o contrato de API já estão prontos e estáveis, o app nativo é
-uma camada de UI sobre eles — pode ser desenvolvido sem novas mudanças no servidor.
+## Permissões
+
+- **Localização** (quando em uso): valida o geofence no registro de ponto.
+- **Câmera**: selfie do reconhecimento facial.
+
+Declaradas em `app.json` (iOS `infoPlist` + Android `permissions`) e solicitadas
+em runtime nas telas.
+
+## Contrato de API usado
+
+| Tela | Endpoint |
+|---|---|
+| Login | `POST /api/users/auth/login` |
+| Bater ponto | `GET /api/ponto/registros/hoje` · `POST /api/ponto/registros` |
+| Histórico | `GET /api/ponto/registros` · `GET /api/banco-horas/saldo` |
+| Solicitações | `GET` / `POST /api/solicitacoes` |
