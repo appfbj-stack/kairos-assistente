@@ -5,19 +5,17 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://kairos_politica:${POSTGRES_PASSWORD}@kairos-assistente-kairos-assistente-kgavlc-postgres-1:5432/kairos
+      DATABASE_URL: ${DATABASE_URL}
       DATABASE_SCHEMA: kairos_politica
       SECRET_KEY: ${SECRET_KEY}
-      KAIROS_ADMIN_URL: http://kairos-assistente-kairos-assistente-kgavlc-backend-1:3010
+      KAIROS_ADMIN_URL: https://api.admin.fbautomacao.space
       KAIROS_CLIENT_ID: ${KAIROS_CLIENT_ID}
       KAIROS_ADMIN_BASIC_USER: ${KAIROS_ADMIN_BASIC_USER}
       KAIROS_ADMIN_BASIC_PASSWORD: ${KAIROS_ADMIN_BASIC_PASSWORD}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     ports:
-      - "8020:8000"
-    networks:
-      - kairos_network
+      - "8021:8000"
 
   frontend:
     build:
@@ -29,10 +27,4 @@ services:
     depends_on:
       - backend
     ports:
-      - "3040:80"
-    networks:
-      - kairos_network
-
-networks:
-  kairos_network:
-    external: true
+      - "3041:80"
