@@ -3,23 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, MessageSquare, Wrench, FileText,
+  Home, MessageSquare, Bot, Wrench, FileText,
   Settings, Cpu, Zap, History, BarChart2,
-  ChevronDown, Sun, LogOut, X, Bot,
-  Database, BookOpen,
+  ChevronDown, Sun, LogOut, X,
 } from "lucide-react";
 
-const kairosNavItems = [
-  { label: "Inicio", href: "/dashboard", icon: Home, group: "main" },
-  { label: "Conversas", href: "/chat", icon: MessageSquare, group: "main" },
-  { label: "Agentes", href: "/agentes", icon: Bot, group: "main" },
-  { label: "Ferramentas", href: "/ferramentas", icon: Wrench, group: "main" },
-  { label: "Documentos", href: "/documentos", icon: FileText, group: "main" },
-  { label: "MCPs", href: "/mcps", icon: Cpu, group: "main" },
-  { label: "Skills", href: "/skills", icon: Zap, group: "main" },
-  { label: "Historico", href: "/historico", icon: History, group: "system" },
-  { label: "Painel", href: "/painel", icon: BarChart2, group: "system" },
-  { label: "Configuracoes", href: "/configuracoes", icon: Settings, group: "system" },
+const navItems = [
+  { label: "Inicio", href: "/dashboard", icon: Home },
+  { label: "Conversas", href: "/chat", icon: MessageSquare },
+  { label: "Agentes", href: "/agentes", icon: Bot },
+  { label: "Ferramentas", href: "/ferramentas", icon: Wrench },
+  { label: "Documentos", href: "/documentos", icon: FileText },
+  { label: "MCPs", href: "/mcps", icon: Cpu },
+  { label: "Skills", href: "/skills", icon: Zap },
+  { label: "Historico", href: "/historico", icon: History },
+  { label: "Painel", href: "/painel", icon: BarChart2 },
+  { label: "Configuracoes", href: "/configuracoes", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -29,10 +28,6 @@ interface SidebarProps {
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const groups = [
-    { id: "main", label: "" },
-    { id: "system", label: "Sistema" },
-  ];
 
   return (
     <>
@@ -60,35 +55,23 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           <h2 className="font-bold text-white text-[17px] tracking-wide">Kairos</h2>
           <p className="text-[11px] text-center mt-0.5 leading-tight" style={{ color: "#64748b" }}>
-            Inteligencia que age<br />no momento certo.
+            Inteligencia que age na hora certa.
           </p>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-2">
-          {groups.map((group) => {
-            const items = kairosNavItems.filter((i) => i.group === group.id);
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
-              <div key={group.id} className="mb-3">
-                {group.label && (
-                  <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mb-1" style={{ color: "#334155" }}>
-                    {group.label}
-                  </p>
-                )}
-                {items.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={onClose}
-                      className={["sidebar-nav-item", isActive ? "active" : ""].join(" ")}
-                    >
-                      <item.icon size={15} className="flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onClose}
+                className={["sidebar-nav-item", isActive ? "active" : ""].join(" ")}
+              >
+                <item.icon size={15} className="flex-shrink-0" />
+                <span>{item.label}</span>
+              </Link>
             );
           })}
         </nav>
