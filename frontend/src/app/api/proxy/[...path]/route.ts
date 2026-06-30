@@ -4,20 +4,26 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'htt
 const BASIC_AUTH_USER = process.env.BASIC_AUTH_USER || '';
 const BASIC_AUTH_PASSWORD = process.env.BASIC_AUTH_PASSWORD || '';
 
-export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyRequest(req, params.path, 'GET');
+type Params = Promise<{ path: string[] }>;
+
+export async function GET(req: NextRequest, { params }: { params: Params }) {
+  const { path } = await params;
+  return proxyRequest(req, path, 'GET');
 }
 
-export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyRequest(req, params.path, 'POST');
+export async function POST(req: NextRequest, { params }: { params: Params }) {
+  const { path } = await params;
+  return proxyRequest(req, path, 'POST');
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyRequest(req, params.path, 'PUT');
+export async function PUT(req: NextRequest, { params }: { params: Params }) {
+  const { path } = await params;
+  return proxyRequest(req, path, 'PUT');
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyRequest(req, params.path, 'DELETE');
+export async function DELETE(req: NextRequest, { params }: { params: Params }) {
+  const { path } = await params;
+  return proxyRequest(req, path, 'DELETE');
 }
 
 async function proxyRequest(req: NextRequest, pathSegments: string[], method: string) {
@@ -31,7 +37,7 @@ async function proxyRequest(req: NextRequest, pathSegments: string[], method: st
   }
   let body: string | undefined;
   if (method !== 'GET' && method !== 'DELETE') {
-    try { body = await req.text(); } catch {}
+    try { body = await req.text(); } catch { /* empty */ }
   }
   const response = await fetch(url, { method, headers, body });
   const data = await response.text();
