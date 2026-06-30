@@ -5,22 +5,20 @@ import { usePathname } from "next/navigation";
 import {
   Home, MessageSquare, Wrench, FileText,
   Settings, Cpu, Zap, History, BarChart2,
-  ChevronDown, Sun, LogOut, X,
-  LayoutDashboard, Users, AppWindow, Key,
-  DollarSign, Server, Brain, ScrollText, Calendar, Bot,
+  ChevronDown, Sun, LogOut, X, Bot,
+  Database, BookOpen,
 } from "lucide-react";
 
-const adminNavItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, group: "main" },
-  { label: "Clientes", href: "/clientes", icon: Users, group: "main" },
-  { label: "Aplicativos", href: "/aplicativos", icon: AppWindow, group: "main" },
-  { label: "Licencas", href: "/licencas", icon: Key, group: "main" },
-  { label: "Financeiro", href: "/financeiro", icon: DollarSign, group: "main" },
-  { label: "VPS", href: "/monitoramento", icon: Server, group: "main" },
-  { label: "Chat IA", href: "/chat", icon: MessageSquare, group: "tools" },
-  { label: "Agenda", href: "/agenda", icon: Calendar, group: "tools" },
-  { label: "IA e Modelos", href: "/ia", icon: Brain, group: "system" },
-  { label: "Logs", href: "/logs", icon: ScrollText, group: "system" },
+const kairosNavItems = [
+  { label: "Inicio", href: "/dashboard", icon: Home, group: "main" },
+  { label: "Conversas", href: "/chat", icon: MessageSquare, group: "main" },
+  { label: "Agentes", href: "/agentes", icon: Bot, group: "main" },
+  { label: "Ferramentas", href: "/ferramentas", icon: Wrench, group: "main" },
+  { label: "Documentos", href: "/documentos", icon: FileText, group: "main" },
+  { label: "MCPs", href: "/mcps", icon: Cpu, group: "main" },
+  { label: "Skills", href: "/skills", icon: Zap, group: "main" },
+  { label: "Historico", href: "/historico", icon: History, group: "system" },
+  { label: "Painel", href: "/painel", icon: BarChart2, group: "system" },
   { label: "Configuracoes", href: "/configuracoes", icon: Settings, group: "system" },
 ];
 
@@ -32,8 +30,7 @@ interface SidebarProps {
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const groups = [
-    { id: "main", label: "Administracao" },
-    { id: "tools", label: "Ferramentas" },
+    { id: "main", label: "" },
     { id: "system", label: "Sistema" },
   ];
 
@@ -63,18 +60,20 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </div>
           <h2 className="font-bold text-white text-[17px] tracking-wide">Kairos</h2>
           <p className="text-[11px] text-center mt-0.5 leading-tight" style={{ color: "#64748b" }}>
-            Inteligencia que age na hora certa.
+            Inteligencia que age<br />no momento certo.
           </p>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-2">
           {groups.map((group) => {
-            const items = adminNavItems.filter((i) => i.group === group.id);
+            const items = kairosNavItems.filter((i) => i.group === group.id);
             return (
               <div key={group.id} className="mb-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mb-1" style={{ color: "#334155" }}>
-                  {group.label}
-                </p>
+                {group.label && (
+                  <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mb-1" style={{ color: "#334155" }}>
+                    {group.label}
+                  </p>
+                )}
                 {items.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
@@ -96,9 +95,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         <div className="px-3 py-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl">
-            <div className="flex-shrink-0 flex items-center justify-center rounded-full text-sm font-semibold text-white" style={{ width: "30px", height: "30px", background: "linear-gradient(135deg, #1e40af, #3b82f6)", boxShadow: "0 0 10px rgba(59,130,246,0.4)" }}>A</div>
+            <div className="flex-shrink-0 flex items-center justify-center rounded-full text-sm font-semibold text-white" style={{ width: "30px", height: "30px", background: "linear-gradient(135deg, #1e40af, #3b82f6)", boxShadow: "0 0 10px rgba(59,130,246,0.4)" }}>F</div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold text-white truncate">Admin</p>
+              <p className="text-[13px] font-semibold text-white truncate">Fernando</p>
               <p className="text-[11px] truncate" style={{ color: "#64748b" }}>Administrador</p>
             </div>
             <ChevronDown size={13} style={{ color: "#475569", flexShrink: 0 }} />
